@@ -49,3 +49,27 @@ export function showNotification(type: 'success' | 'error' | 'info', message: st
   setTimeout(() => notification.set(null), duration)
 }
 
+// Drawer state stores
+export const writeDrawerOpen = writable(false)
+export const storyReaderDrawerOpen = writable(false)
+export const previewDrawerOpen = writable(false)
+
+// Current story being viewed in StoryReaderDrawer (for later phases)
+export const currentViewingStory = writable<{ id: string; title: string } | null>(null)
+
+// Team color store - derives from session's team or uses default
+export const teamColors = writable<{ primary: string; secondary: string }>({
+  primary: '5422b0',
+  secondary: 'f0e6f7'
+})
+
+// Color palettes available for teams
+export const COLOR_PALETTES = [
+  { name: 'Indigo Bloom', primary: '5422b0', secondary: 'f0e6f7' },
+  { name: 'Stormy Teal', primary: '057373', secondary: 'd6ebdd' },
+  { name: 'Baltic Blue', primary: '00639c', secondary: 'dbeffa' },
+  { name: 'Royal Orchid', primary: '9100ae', secondary: 'f0cbf6' },
+  { name: 'Oxidized Iron', primary: 'b12e09', secondary: 'f6d4cb' },
+  { name: 'Brick Ember', primary: 'd60202', secondary: 'ffd6d6' }
+] as const
+

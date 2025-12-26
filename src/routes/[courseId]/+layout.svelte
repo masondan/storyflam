@@ -2,13 +2,22 @@
   import { page } from '$app/stores'
   import { session, isLoggedIn } from '$lib/stores'
   import { goto } from '$app/navigation'
+  import FooterNav from '$components/FooterNav.svelte'
+  import WriteDrawer from '$components/WriteDrawer.svelte'
+  import StoryReaderDrawer from '$components/StoryReaderDrawer.svelte'
+  import PreviewDrawer from '$components/PreviewDrawer.svelte'
 
   $: {
-    // Protect route: redirect to splash if not logged in
     if (!$isLoggedIn) {
       goto('/')
     }
   }
 </script>
 
-<slot />
+<div class="min-h-screen bg-white">
+  <slot />
+  <FooterNav />
+  <WriteDrawer />
+  <StoryReaderDrawer />
+  <PreviewDrawer />
+</div>

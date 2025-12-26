@@ -1,69 +1,58 @@
 <script lang="ts">
-  import { session } from '$lib/stores'
-  import { goto } from '$app/navigation'
-
-  function handleLogout() {
-    session.logout()
-    goto('/')
-  }
+  let activeTab: 'drafts' | 'published' = 'drafts'
 </script>
 
 <svelte:head>
   <title>NewsLab - Home</title>
 </svelte:head>
 
-<div class="min-h-screen bg-bg-main flex flex-col">
-  <!-- Header placeholder -->
-  <header class="px-4 py-3 border-b border-color-separator">
-    <div class="flex items-center justify-between">
-      <h1 class="text-h2 font-bold text-text-primary">Home</h1>
-      <button 
-        on:click={handleLogout}
-        class="text-sm text-accent-brand"
+<div class="min-h-screen bg-white flex flex-col pb-[50px]">
+  <!-- Tabs -->
+  <div class="px-4 pt-4">
+    <div class="flex gap-6">
+      <button
+        on:click={() => (activeTab = 'drafts')}
+        class="pb-2 text-base font-medium transition-colors relative"
+        class:text-[#5422b0]={activeTab === 'drafts'}
+        class:text-[#777777]={activeTab !== 'drafts'}
       >
-        Logout
+        Drafts
+        {#if activeTab === 'drafts'}
+          <span class="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5422b0]"></span>
+        {/if}
+      </button>
+      <button
+        on:click={() => (activeTab = 'published')}
+        class="pb-2 text-base font-medium transition-colors relative"
+        class:text-[#5422b0]={activeTab === 'published'}
+        class:text-[#777777]={activeTab !== 'published'}
+      >
+        Published
+        {#if activeTab === 'published'}
+          <span class="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5422b0]"></span>
+        {/if}
       </button>
     </div>
-  </header>
+  </div>
 
-  <!-- Main content area -->
-  <main class="flex-1 p-4">
-    <div class="space-y-4">
-      <!-- Tabs placeholder -->
-      <div class="flex border-b border-color-separator">
-        <button class="px-4 py-2 text-accent-brand border-b-2 border-accent-brand font-medium">
-          Drafts
-        </button>
-        <button class="px-4 py-2 text-text-secondary">
-          Published
-        </button>
-      </div>
-
-      <!-- Empty state -->
-      <div class="text-center py-12">
-        <p class="text-text-secondary">Nothing to show.</p>
-        <p class="text-text-secondary text-sm mt-2">
-          First, create or join a team in Settings. Then start writing.
+  <!-- Content Area -->
+  <main class="flex-1 flex items-center justify-center px-8">
+    {#if activeTab === 'drafts'}
+      <div class="text-center">
+        <p class="text-[#777777] text-base">Nothing to show yet.</p>
+        <p class="text-[#777777] text-sm mt-2">
+          First, create or join a team in Settings.<br />
+          Then dive in - your drafts appear here.
         </p>
       </div>
-    </div>
+    {:else}
+      <div class="text-center">
+        <p class="text-[#777777] text-base">Nothing to show yet.</p>
+        <p class="text-[#777777] text-sm mt-2">
+          Published stories appear here<br />
+          and in your Team Stream.
+        </p>
+      </div>
+    {/if}
   </main>
-
-  <!-- Footer nav placeholder -->
-  <footer class="border-t border-color-separator bg-bg-main px-4 py-2">
-    <div class="flex items-center justify-around">
-      <button class="p-2">
-        <img src="/icons/icon-user-fill.svg" alt="Home" class="w-6 h-6" style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);" />
-      </button>
-      <button class="relative -mt-4 w-14 h-14 rounded-full bg-accent-brand flex items-center justify-center shadow-lg">
-        <img src="/icons/icon-newstory.svg" alt="Write" class="w-6 h-6" style="filter: brightness(0) invert(1);" />
-      </button>
-      <button class="p-2">
-        <img src="/icons/icon-group.svg" alt="Team" class="w-6 h-6 opacity-50" />
-      </button>
-      <button class="p-2">
-        <img src="/icons/icon-settings.svg" alt="Settings" class="w-6 h-6 opacity-50" />
-      </button>
-    </div>
-  </footer>
 </div>

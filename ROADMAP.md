@@ -206,33 +206,15 @@ PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
 - Session validation in `src/routes/+layout.svelte` on mount
 - Auth functions with discriminated unions in `src/lib/auth.ts`
 
-**Supabase Queries:**
-- Validate Course ID: `SELECT id, trainer_id, guest_editor_id FROM newslabs WHERE course_id = $1 OR trainer_id = $1 OR guest_editor_id = $1`
-- Check byline availability: `SELECT * FROM journalists WHERE course_id = $1 AND name = $2`
-- Auto-create journalist (first-time): `INSERT INTO journalists (course_id, name, is_editor, team_name) VALUES ($1, $2, false, null)`
-
-**localStorage Schema:**
-```javascript
-{
-  courseId: "nigeria-0126",                    // From splash Step 1
-  name: "Zainab",                              // From splash Step 2
-  role: "journalist|trainer|guest_editor",    // Auto-detected from courseId match
-  teamName: null,                              // Populated after Settings/team join
-  sessionToken: "uuid"                         // Client-side session ID
-}
-```
-
-**Validation Rules:**
-- Course/Role ID: Alphanumeric, 3-20 characters. Must exist in newslabs table.
-- Byline name: Max 30 characters. Must be unique per course (case-sensitive).
-- On error: Show inline message + red X icon (icon-close-circle-fill.svg)
-- On success: Show green check icon (icon-check-fill.svg) and advance to next step
-
-**Design References:**
-- Splash initial state: splash1.png (DESIGN.md section "1 Splash screen")
-- After Course ID validation: splash2.png (check icon, byline input appears)
-- After byline entry: splash3.png (both fields validated, ready to submit)
-- Error state: DESIGN.md text descriptions ("Try again", "Name taken. Try again")
+**Design & UI/UX Focus:**
+- **Goal:** Implement the two-step login flow exactly as specified in `DESIGN.md`, section "1 Splash screen".
+- **Visuals:** Reference `/info/visuals/splash1.png`, `splash2.png`, and `splash3.png`.
+- **Key Elements:**
+    - Background: Solid `#5422b0` with `logo-textlogo-white.png`.
+    - Inputs: `#efefef` background, placeholder text color `#777777`.
+    - Validation Icons: Use `icon-check-fill.svg` (color `#5422b0`) for success and `icon-close-circle-fill.svg` (color `#5422b0`) for error.
+    - Error Messages: Display "[Try again]" or "[Name taken. Choose another]" as per `DESIGN.md`.
+    - Submission: The `icon-login-fill.svg` (color `#5422b0`) is the final submission button.
 
 **Acceptance Criteria:**
 - [ ] Invalid Course/Role ID shows error "Try again" + red X icon
@@ -280,24 +262,28 @@ PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
 - `src/components/PreviewDrawer.svelte` — Preview modal (left-to-right slide)
 - Footer integrated into `src/routes/[courseId]/+layout.svelte`
 
-**State Management:**
-- Use Svelte stores for drawer visibility, active tab, scroll position
-- Example: `activeDrawer: 'none' | 'write' | 'preview' | 'story_reader'`
-
-**Design References:**
-- Footer nav: DESIGN.md section "2 User Home", visual user1.png (footer visible in all)
-- Write drawer: DESIGN.md section "3 Write Page", write1.png
-- Story reader: DESIGN.md section "4. Team Stream", team1.png, team2.png
-- Preview drawer: DESIGN.md section "3 Write Page", write5.png
+**Design & UI/UX Focus:**
+User Home Initial view**
+- Visuals: user1.png, user2.png
+- Icons/logos: icon-user.svg, icon-user-fill.svg,  icon-group.svg, icon-group-fill.svg, icon-newstory.svg, icon-settings.svg, icon-settings-fill.svg
+The page has two tabs: Drafts and Published (Active purple 5422b0 + underline, inactive #777777)
+    - At first the Draft tab is empty and displays a #777777 notification: Nothing to show. / First, create or join a team in Settings. Then start writing.
+    - At first the Draft tab is empty and displays a #777777 notification: Nothing to show. / Published stories appear here and in your Team Stream.
+Footer menu
+    - The footer menu has a white background and fine 1px #777777 line above.
+    - Centered in the footer is a white on solid purple circle (Write - icon-newstory.svg #5422b0), the top of which modestly overlays a horizontal 1pt #777777 full-width line. This icon is larger than others on the footer. A filled svg is provided: icon-newstory.svg
+    - To the left of the Write button is the user home button (icon-user-fill.svg #5422b0 when the page is active, icon-user.svg #777777 when a different page is selected)
+    - To the right of the Write button is the Team Stream button (icon-group.svg #777777 when inactive, icon-group-fill.svg #5422b0 when active)
+    - At the far right of the footer is the settings button (icon-settings.svg #777777 when inactive, icon-settings-fill.svg #5422b0 when active
 
 **Acceptance Criteria:**
 - [ ] Footer appears on all pages with correct icons (See DESIGN.md visual references)
-- [ ] Clicking footer button opens correct drawer/page
-- [ ] Drawers slide in from correct direction (bottom-to-top for Write, left-to-right for Preview)
-- [ ] Close button (X) closes drawer
-- [ ] Tab switching maintains scroll position (no jump to top)
-- [ ] Active tab button is #5422b0 (or team color if set); inactive #777777
-- [ ] Write button is larger, white-on-purple circle (See user1.png)
+- [ ] Clicking footer button opens correct drawer/page.
+- [ ] Drawers slide in from correct direction (bottom-to-top for Write/Story Reader, left-to-right for Preview).
+- [ ] Close button (X) closes any active drawer.
+- [ ] Tab switching maintains scroll position (no jump to top).
+- [ ] Active tab button is `#5422b0` (or team color if set); inactive is `#777777`.
+- [ ] The centered 'Write' button is larger than the other footer icons and styled as per `user1.png`.
 
 ---
 
@@ -334,54 +320,127 @@ PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
 - `src/components/ColorPalette.svelte` — 6 color circles with selection indicator
 - `src/components/ShareToggle.svelte` — Public URL toggle + copy button (editors only)
 
-**Supabase Queries:**
-- Get team members: `SELECT * FROM journalists WHERE course_id = $1 AND team_name = $2 ORDER BY created_at`
-- Create team: `INSERT INTO teams (course_id, team_name) VALUES ($1, $2) RETURNING *`
-- Update journalist team: `UPDATE journalists SET team_name = $1 WHERE course_id = $2 AND name = $3`
-- Update team theme: `UPDATE teams SET primary_color = $1, secondary_color = $2 WHERE course_id = $3 AND team_name = $4`
-- Toggle editor: `UPDATE journalists SET is_editor = NOT is_editor WHERE course_id = $1 AND name = $2 AND team_name = $3`
-- Realtime subscription on journalists table for team changes
+**Design & UI/UX Focus:**
+Visuals: settings1.png, settings2.png, settings3.png, settings4.png
+Icons: icon-check.svg, icon-circle.svg, icon-upload.svg, icon-close-circle.svg, icon-close.svg, icon-toggle-on.svg, icon-toggle-on.svg, icon-copy.svg
 
-**Cloudinary Integration:**
-- Logo upload: Cloudinary unsigned upload to `/team-logos/` folder
-- Auto-crop to square (aspect ratio 1:1)
-- Max size: 200KB
 
-**Permission Model:**
-- Non-editors: Can view Team Name, Member list, see Share URL (but can't change settings)
-- Editors: Can change Team Name, Team Color, upload logo, toggle editor status, enable/disable sharing
-- Team name change blocked for non-editors (disable input field)
+- Accessed via the settings icon in the footer. Active #5422b0, inactive #777777
+- Journalists see only one settings page
 
-**Design References:**
-- Settings layout: DESIGN.md section "5. Settings", settings1.png, settings2.png, settings3.png, settings4.png
-- Team color palette: DESIGN.md color list and settings1.png (bottom of page)
-- Team logo upload area: settings1.png
-- Public share toggle: Will be added to DESIGN by user (coordinate with visuals)
+- Initial view of the Settings page (with byline name automatically added): settings1.png
+
+Settings page elements
+
+From the top down …
+Byline input window - name added
+	- See settings1.png
+	- The journalist was required to submit a byline name on the splash screen
+	- The byline name will automatically appear in the settings
+	- The byline input field is an #efefef window. To the right - if the name is registered in the database - is a purple #5422b0 check icon (icon-check.svg)
+	- The journalist would normally not need to touch this name unless they want to change it.
+
+Byline input window - change name** 
+	- See settings2.png, settings3.png
+	- If they wish, the journalist can change their byline name.
+	- To do this, they tap in the byline name input box. 
+		- A fine purple active border appears around the input box
+		- The check icon (icon-check-fill.svg) to the right is transformed into the circle icon (icon-circle.svg color: #777777)
+		- A Save (text. Pill button with #5422b0 background) and Cancel (icon-close-circle.svg) button appear under the input field to the left.
+	- The journalist inputs a new name (max 30 characters). 
+		- IF NOT available, the icon to the right changes to an x (icon-close-circle.png) and a message appears: [Name taken. Try again] See settings3.png
+		- If available the circle to the right becomes the icon-check.svg, default #5422b0 checkbox again)
+	- The journalist then confirms by tapping the Save button (or cancelling with the cancel button)
+
+Team name input window.
+	- See settings4.png
+	- To the right of the Team Name #efefef input window is a #777777 circle (icon-circle.svg).  As in settings3.png
+	- In training, teams will be asked to elect a team member who will input the agreed team name first. This members becomes an editor by default.
+	- The journalist taps the Team Name input window. The flow is almost the same as for the Byline Name change process.
+	- On tapping the window, a fine purple active border appears around the input box
+	- A Save (text button. Pill with #5422b0 background) and Cancel (icon-close-circle.svg) buttons appear under the input field to the left.
+	- The journalist inputs a Team name (max 30 characters). 
+		- IF NOT available, the icon to the right changes to an x (icon-close-circle.png) and a message appears: [Name taken. Try again]
+		- If available the circle to the right becomes the icon-check.svg, default #5422b0)
+	- The journalist then confirms by tapping the Save button (or cancelling with the cancel button)
+	- the name of the journalist is then added to the list of members below with the Editor selector applied by default. This means the Team always has one editor at the start (it can be changed later).
+	- When a team has been created, other team members now enter the name of the team in the input window. If found in the database, the active check will be displayed in their settings and their names appear in the list of team members below. See settings3.png
+
+Team members
+	- See settings5.png
+	- The Team Members section below the Team Name input is empty at first. There is placeholder text that says [Team members will appear here]. This disappears when team member names are added.
+	- The journalist who added the team name automatically becomes an editor.
+	- Names of other team members appear in a list automatically, with fine separators as team members are added. All team members can see each other’s names in their app settings. 
+
+
+Editors
+	- See settings6.png
+	- The person who first creates the team AUTOMATICALLY is made an Editor. The Editor checkbox (icon-check.svg #5422b0) is then active by default (but can be changed later)
+	- Teams can have one or more editors. Only editors can create or remove other editors.
+	- Once created, ONLY editors can amend the team name. This should be blocked for non-editors
+	- Only Editors can select the team colour, upload the team logo, activate the team stream sharing toggle. These functions should be blocked for non-editors. 
+	- There must always be at least one editor per team. If an editor who is the last in the team tries to remove their editor status by unchecking the button to the right of their name, a message modal appears to say [Teams must have at least one editor. Add another then try again] with a [Got it] confirmation button to close the modal.
+	- Closing a Team. To close a team, members leave (or are removed) until only a final editor is left. When that editor leaves the team, the team is closed and the team name is removed.
+
+Removing a team member**
+	- settings7.png
+	- To the left of each name is an x close icon (icon-close.svg). This is to remove members from the team.
+	- Only editors/trainer/guest editors can remove members from the team. 
+	- To remove a member, editors/trainer/guest editors tap the x next to the name. The name and x are highlighted with #5422b0 and a toolbar below the list of members is displayed in #5422b0. 
+	- This toolbar has a confirmation [Remove from team?] with check (yes) and cancel (no) buttons (icon-check.svg, icon-close-circle.svg).
+	- Tapping ‘Remove from team?’ Removes the person from that team. Their name disappears under the Team Name and the Team Name input box becomes blank.
+
+Content of removed members**
+	- Journalists must belong to a team to Publish stories. They can create Drafts, but cannot Publish.
+	- A journalist may have been part of a team and published stories. What happens to these stories?
+	- All stories published by the journalist are moved back to Drafts. They no longer appear in Published or in the Team Stream. 
+
+Team themes**
+	- See settings7.png
+    - There are six team colour selectors, displayed in a row of circular colour buttons. Selected buttons have a circle around them in the selected colour. 
+	- The standard #777777 text title with underscore says ’Pick a team theme*’ (with asterisk). Aligned to the same line is ‘*Editors only’
+	- The colour is a team choice, but only an editor can activate the colour. 
+	- Tapping a theme colour immediately changes the colour around the app.
+	- Each colour is a pair, with darker primary colour which takes the place of the default purple in page hovers, toolbars, active icons etc. The primary colour is paired with a secondary lighter colour, used in the team stream hero header. The palette is as follows:
+
+"Indigo Bloom":"5422b0","Lavender Veil":"f0e6f7" (Default)
+"Stormy Teal":"057373","Honeydew":"d6ebdd"
+"Baltic Blue":"00639c","Alice Blue":"dbeffa"
+"Royal Orchid":"9100ae","Thistle":"f0cbf6"
+"Oxidized Iron":"b12e09","Almond Silk":"f6d4cb"
+"Brick Ember":"d60202","Cotton Rose":"ffd6d6"
+
+Logo upload**
+	- See settings7.png
+    - The logo text says: [Upload a team logo (square)*]. See settings4.png
+	- Logos must be square. Only editors can upload a team logo. 
+	- There is a dotted square #777777 below the title with an upload button icon-upload.svg
+	- If no logo is uploaded, use the fallback: newslab-logo-fallback.png This logo shows by default on the Team Stream with the placeholder team name: Team NewsLab 
+	- A small close x button should be placed in the corner of the thumbnail when uploaded to delete the image
+
+
+Team stream share URL**
+	- see settings8.png
+	- After a team is created, a public URL can be generated (ONLY by an editor/the trainer/guest editor) to share the team’s ‘website’ (team stream).
+	- By default the setting displays a small header [share team stream*] with full width fine underscore. Aligned right is a toggle button switch OFF by default.
+	- Note: Create the toggle using CSS to achieve a smooth animated effect. However, if this proves difficult, toggle box svgs are added to static/icons: icon-toggle-on.svg and icon-toggle-off.svg.
+	- When an editor toggles the URL generator ON, a URL is displayed in a pale grey #efefef box beneath the title and toggle box. A copy button sits inside the box aligned right. Icon-copy.svg. See settings6.png
+	- When the URL toggle is on (active colour #5422b0) and the URL generated, it can be copied by any member of the team.
+	- The URL format should be simple: newslab.app/team-name (there is no danger of future clashes because all data and content will be erased at the end of each training course)
+	-Note: The website may benefit from a little styling, which can be done after the initial shared site (the team stream) is complete. Consider a collapsible header, leaving just the team name visible in a slim translucent header; perhaps previous/next below individual stories? Desirable but not essential.
 
 **Acceptance Criteria:**
-- [ ] Byline field shows auto-populated name (from splash login) with check icon
-- [ ] Byline field is editable: Click/tap to enter edit mode (purple border, Save/Cancel buttons appear)
-- [ ] Byline validation: New name must be unique per course; taken name shows red X + error message
-- [ ] Byline Save button saves to database + shows "✓ Saved" feedback (1-2 second fade)
-- [ ] Byline Cancel button exits edit mode without saving changes
-- [ ] If journalist changes byline, they must remember new name for next device login
-- [ ] Team name field populated if user in a team, empty if not
-- [ ] Real-time validation: New team name shows green ✓, taken name shows red X
-- [ ] Team Members list shows all members (including self)
-- [ ] "X" next to own name triggers "Remove from team?" confirmation
-- [ ] Leaving team: All published stories for that team revert to Drafts (visible in Home/Drafts tab)
-- [ ] Leaving team removes journalist from database, redirects to empty settings
-- [ ] Drafts tab shows stories reverted from team (journalist can re-publish to new team later)
-- [ ] Last member leaves: Team deleted from database
-- [ ] Editor checkbox visible next to each member's name
-- [ ] Non-editors: Cannot toggle editor status (checkbox disabled/hidden)
-- [ ] Only editors can change team name (field disabled for non-editors)
-- [ ] Journalist joins new team: Can republish reverted stories to new team
-- [ ] Color selector shows 6 circles; selected color has ring indicator
-- [ ] Color change updates app theme in real-time (buttons, icons, active states)
-- [ ] Logo upload shows preview, accepts square images only
-- [ ] Share toggle visible to editors only; generates URL `newslab.app/[team-name]`
-- [ ] Copy URL button copies to clipboard
+- [ ] Byline field shows auto-populated name with a check icon.
+- [ ] Tapping Byline field enters edit mode with purple border and Save/Cancel buttons appear (`settings2.png`).
+- [ ] Byline validation shows red X and error message for taken names (`settings3.png`).
+- [ ] Byline Save button shows "✓ Saved" feedback.
+- [ ] Team name input validates in real-time.
+- [ ] Team Members list shows all members; only editors see controls to remove members or toggle editor status.
+- [ ] Removing a member triggers confirmation flow as per `settings7.png`.
+- [ ] Leaving team reverts all published stories for that user to their Drafts tab.
+- [ ] Color selector shows 6 circles; selection is indicated with a ring and immediately updates the app theme.
+- [ ] Logo upload shows a preview and accepts square images only.
+- [ ] Share toggle is visible only to editors and correctly shows/hides the public URL.
 
 ---
 
@@ -392,11 +451,11 @@ PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
 - [ ] Write drawer opens from bottom, full screen (See write1.png)
 - [ ] Headline input (required, placeholder "Title")
 - [ ] Summary input (optional, textarea, placeholder "Text")
-- [ ] Featured image upload (Cloudinary, auto-resize to max 800px width, any aspect ratio)
+- [ ] Image upload (Cloudinary, auto-resize to max 800px width, any aspect ratio)
 - [ ] Image caption support (placeholder "[Tap to add caption]", disappears if empty)
 - [ ] Rich text editor: Bold, H2 subheading, lists, separators
 - [ ] Toolbar at bottom with formatting + embed buttons (See write1.png toolbar)
-- [ ] YouTube/Vimeo URL input modals
+- [ ] YouTube URL input modals
 - [ ] Custom thumbnail upload for YouTube (square, stored separately)
 - [ ] Link insertion (using team color/default purple for link text)
 - [ ] Auto-paste formatting removal (plain text only)
@@ -405,8 +464,6 @@ PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
 - [ ] Word count display (bottom of write drawer, not in published story)
 - [ ] Preview drawer (slides left-to-right, shows formatted story with team branding)
 - [ ] Close drawer button (X icon) with unsaved changes confirmation
-
-**Routes:** Handled as drawer modal in Phase 2
 
 **Components to Build:**
 - `WriteDrawer.svelte` — Main editor container
@@ -422,67 +479,111 @@ PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
 - `AutoSaveIndicator.svelte` — "Saved" text feedback (brief, bottom-right)
 - `WordCounter.svelte` — Word count display
 
-**Rich Text Storage:**
-```javascript
-// stories.content structure
-{
-  blocks: [
-    { type: 'paragraph', text: 'Some text' },
-    { type: 'heading', text: 'Subheading' },
-    { type: 'bold', text: 'Bold text' },
-    { type: 'list', items: ['item 1', 'item 2'] },
-    { type: 'separator' },
-    { type: 'image', url: 'cloudinary-url', caption: 'Caption text' },
-    { type: 'youtube', url: 'https://youtube.com/...', thumbnailUrl: 'optional' },
-    { type: 'link', url: 'https://...', text: 'Link text', color: 'team-primary' }
-  ]
-}
-```
+**Design & UI/UX Focus:**
+Visuals: write1.png, write2.png, write3.png, write4.png, write5.png, 
 
-**Auto-save Logic:**
-```javascript
-// Debounced function
-const debouncedSave = debounce(() => {
-  // 1. Save to localStorage (instant)
-  localStorage.setItem('draft_' + courseId, JSON.stringify(storyData))
-  // 2. Save to Supabase (async, non-blocking)
-  supabase.from('stories').upsert({ ...storyData, status: 'draft' })
-  // 3. Show "Saved" indicator for 1s, then fade
-}, 3000)
+Icons: icon-bold.svg, icon-close-svg, icon-youtube.svg, icon-heading.svg, icon-image.svg, icon-link.svg, icon-preview-fill.svg, icon-preview.svg, icon-publish-fill.svg, icon-publish.svg, icon-separator.svg, icon-custom-upload.svg
 
-// On every keystroke/change
-editor.addEventListener('input', debouncedSave)
-```
+- Tapping the centred purple icon-newstory-svg launches the Write drawer (bottom to top), filling the page. An X (#777777) on circle #efefef background at the top left closes the drawer.
+- There are two placeholder words: Title and Text, which disappear when the journalist starts to write. See write1.png
+- Text pasted into the editor is automatically stripped of HTML attributes, leaving plain text to be edited by the journalist. 
+- Styles can be applied using the Style menu
 
-**Cloudinary Integration:**
-- Featured images: Max 800px width, any aspect ratio, lossy compression (q_80)
-- Logo images: Square (1:1), max 200KB
-- YouTube custom thumbnail: Square, max 200KB
+Style menu**
+- at the bottom of the Write screen (sitting above the mobile keyboard) is a toolbar menu on white background, comprising:
+    - Image: icon-image.svg. Tap to import an image from device. The image can be uploaded at any size but should be compressed to a width of 800px
+    - Headline: icon-heading.svg. Turns highlighted text into an H2 subheading. 
+    - Bold: icon-bold.svg. Turns highlighted text bold
+    - Separator: icon-separator.svg. Add a separator in text (centred, 50% of page width)
+    - YouTube: icon-youtube.svg. Pop up modal for YouTube URL. In addition the modal provides an option to upload (icon-custom-upload.svg) a custom square image that would NOT appear in the post, but only as the thumbnail in the Published/Team Stream. When the image is uploaded, I envision the filename of the image displaying to the right of the upload icon. See write3.png
+    - Link: icon-link.svg. Pop up window for external links See write2.png
+    - A fine vertical separator, before two publishing related buttons
+    - Preview: icon-preview.svg. Launches a full-screen drawer with preview of published article. Since the Write window is already a drawer (vertical), the preview drawer enters from the left. An arrow in the top left of the preview drawer makes the drawer slide back to the left, returning to the Write drawer. Note: the preview includes the Team theme header with selected colour, a team logo (input via settings) and team name in selected team font. The article preview run below. See write4.png
+    - Publish: icon-publish.svg, icon-publish-fill.svg. When writing and editing is complete, tapping the publish button (icon-publish.svg changes to icon-publish-fill.svg, #5422b0) launches a publish toolbar (See write5.png). 
+    - Publish toolbar includes a [Publish?] confirmation. 
+	- to the left of the Publish toolbar is a white x cancel button on circle 5422b0 background.
+    - Tapping the confirmation moves the story to the user’s Published list AND to the Team Stream.
 
-**Design References:**
-- Write drawer layout: DESIGN.md section "3 Write Page", write1.png, write2.png
-- Toolbar buttons: write1.png (bottom toolbar)
-- YouTube custom upload: write4.png
-- Link modal: write3.png
-- Preview drawer: write5.png (includes team header with logo, theme color, team name)
-- Publish toolbar: write6.png (will use in Phase 5)
+Story format**
+- The title size and font and body size and font are fixed
+- The user can use bold, H2 to add subheading and separators to make the story more engaging
+- One or more images can be added. Images are compressed to max 800px wide (compressed)
+- When an image is inserted, a placeholder text is automatically added under the image: [Tap to add a caption]. If a caption is not entered, no text displays on the the published image.
+- Add a word count to the bottom of the story in Write drawer. No word count should appear displayed on the published article.
+- When the story is published the author byline (added in the user settings) is inserted automatically at the top of the story, above left of the headline.
+- No timestamp is included in the published article (but it appears in the draft, published, and Team Stream
 
-**Acceptance Criteria:**
-- [ ] Headline input appears at top, placeholder "Title" disappears on focus
-- [ ] Summary textarea appears below headline
-- [ ] Image upload button opens file picker, resizes to max 800px width
-- [ ] Image preview shows below upload button
-- [ ] Caption field appears below image with placeholder text
-- [ ] All formatting buttons (bold, H2, list, separator) work on selected text
-- [ ] YouTube/Vimeo/Link modals open and close correctly
-- [ ] Custom thumbnail upload for YouTube works (shows filename after upload)
-- [ ] Pasted text is plain text (no formatting retained)
-- [ ] Auto-save fires every 3s (debounced on keystroke)
-- [ ] "Saved" indicator appears briefly after successful Supabase sync
-- [ ] Word count updates in real-time, displays at bottom of drawer
-- [ ] Preview drawer shows formatted story with team branding (logo, color, name)
-- [ ] Close button (X) closes drawer; unsaved changes show confirmation dialog
-- [ ] Draft restored from localStorage on page refresh
+Drafts tab
+
+- Visuals: user3.png, user4.png, 
+- Icons: icon-more.svg, icon-select-all.png, icon-select-all-fill.svg, icon-trash.svg, icon-time.svg, icon-radio.svg, icon-circle.svg
+
+- When the journalist has created story drafts, they appear in the Drafts list. This is the app default tab view when a journalist first enters the app.
+
+Each preview includes**
+    - a square thumbnail image (with fallback image uploaded via the trainer settings) aligned left
+    The preview to the right of the thumbnail has four rows. From top to bottom:
+    - 1 timestamp (clock icon - icon-time.svg)
+    - 2 headline (max two lines)
+    - 3 text (max two lines)
+    - 4 journalist name (name only - not ‘By …’ ) aligned right
+    - To the right of the headline is a three-dot menu. #777777 by default, #5422b0 when active
+    - Under each preview is a fine separator EXCEPT under the last preview in the list.
+
+- When content exists, the ‘select all’ button appears at the top right of the page. When inactive the icon (icon-select-all.svg is #777777. When active it changes to icon-select-all-fill.svg with #5422b0 colour).
+
+Three dot menu**
+
+Visuals: user4.png, user5.png, user6.png
+
+- When the three dot menu is active it turns #5422b0
+- Tapping a three-dot menu triggers a toolbar below the preview (but before the separator). This includes, from left: [trash icon][Export][Edit]  See: user4.png
+- Tapping Delete triggers an extension to the left of the toolbar with Delete? confirmation. See user5.png
+- Tapping Export launches a dropdown menu (#f0e6f7) with two download options: PDF or TXT. See user6.png
+
+Select all**
+
+Visuals: user7.png
+Icons: icon-circle.svg, icon-radio.svg
+
+- Tapping the Select all button at the top right (icon-select-all.svg #777777) makes the button active (icon-select-all-fill.svg colour #5422b0.
+- Tapping the select all button triggers circle buttons (icon-circle.svg #777777) that replace the three-dot menus in the list of previews.
+- Selecting one or more circles (which become radio buttons - icon-radio.svg #5422b0) displays the purple trash icon next to the Select All button
+- Tapping the trash icon triggers a confirmation tooltip to its left (Delete?)
+- Selected previews/stories are deleted, the Select All button goes back to its inactive state and three-bar menus replace the radio buttons.
+
+Published Tab
+
+- Visuals: user8.png, user9.png, user10.png, user11.png user12.png
+
+- Published tab contains previews of stories published only by the individual author. The initial layout view is exactly the same as the Drafts preview display. See user8.png
+- For desktop browsers, there is a hover effect that turns headlines #5422b0 (or selected team theme color)
+
+
+Three dot menu**
+
+- The three dot menu triggers a toolbar in the same style as the Drafts tab. The three dot toolbar moves from #777777 to #5422b0 on tap. See user9.png
+- However, the toolbar buttons are slightly different to the Draft tab toolbar. The order of buttons in the published toolbar is, from left to right: [trash icon)[Unpublish][Export][Edit]
+- The Unpublish button moves the story to the journalist’s Drafts tab. It is no longer visible in the Published tab OR in the Team Stream.
+- The Export tab works in the exactly the same way as previously, triggering a dropdown menu with PDF and TXT options See user10.png
+- the trash can function works in exactly the same was as the Draft tab, triggering a toolbar extension with Delete?
+- Edit launches the Write/editing drawer where the journalist can continue to edit the story/
+
+Select all**
+
+- This works in exactly the same way as on the Drafts tab. Tapping the icon (becomes active) replaces the three dot menus with radio buttons and displays the trash icon. See user11.png user12.png
+
+Acceptance Criteria:**
+- [ ] Headline input appears at top, placeholder "Title" disappears on focus.
+- [ ] Image upload button opens file picker; caption field appears below the uploaded image.
+- [ ] All toolbar buttons are functional.
+- [ ] Modals for YouTube and Link pop up and function as per `write2.png` and `write3.png`.
+- [ ] Custom thumbnail upload for YouTube shows the selected filename (`write4.png`).
+- [ ] Pasted text is stripped of its original formatting.
+- [ ] "Saved" indicator appears briefly after each auto-save.
+- [ ] Word count updates in real-time at the bottom of the drawer.
+- [ ] Preview drawer (`write5.png`) shows the story with correct team branding and formatting.
+- [ ] Close button (X) on Write Drawer prompts for unsaved changes.
 
 ---
 
@@ -511,10 +612,6 @@ editor.addEventListener('input', debouncedSave)
 - [ ] Real-time updates via Supabase Realtime subscription
 - [ ] Activity log entries created for publish/unpublish/delete/pin/unpin
 
-**SvelteKit Routes:**
-- `src/routes/[courseId]/home/+page.svelte` — User Home (Drafts/Published tabs)
-- `src/routes/[courseId]/stream/+page.svelte` — Team Stream (pinned + stories)
-
 **Components to Build:**
 - `src/components/PublishToolbar.svelte` — Pin toggle + confirmation
 - `src/components/DraftsTab.svelte` — List of personal draft stories
@@ -526,78 +623,47 @@ editor.addEventListener('input', debouncedSave)
 - `src/components/SelectAllToggle.svelte` — Multi-select mode for bulk delete
 - `src/components/TeamHeader.svelte` — Team name + logo + color
 
-**Supabase Queries:**
-- Get drafts: `SELECT * FROM stories WHERE course_id = $1 AND author_name = $2 AND status = 'draft' ORDER BY updated_at DESC`
-- Get published: `SELECT * FROM stories WHERE course_id = $1 AND author_name = $2 AND status = 'published' ORDER BY created_at DESC`
-- Get team stream: `SELECT * FROM stories WHERE course_id = $1 AND team_name = $2 AND status = 'published' ORDER BY is_pinned DESC, pin_timestamp DESC, created_at DESC`
-- Publish story: `UPDATE stories SET status = 'published', is_pinned = FALSE WHERE id = $1 RETURNING *`
-- Unpublish story: `UPDATE stories SET status = 'draft' WHERE id = $1 RETURNING *`
-- Pin story (editors only): See Phase 5 pin logic below
-- Realtime subscriptions on stories table (filtered by course_id, team_name)
+**Design & UI/UX Focus:**
+Visuals: team1.png, team2.png, team3.png, team4.png, team5.png
+Icons: icon-pin.svg, icon-pin-fill.svg
 
-**Pin Logic (Editors Only):**
-```javascript
-// When editor pins a story:
-const currentPins = await supabase
-  .from('stories')
-  .select('*')
-  .eq('course_id', courseId)
-  .eq('team_name', teamName)
-  .eq('is_pinned', true)
-  .order('pin_timestamp', { ascending: false })
+- Accessed from the Team icon in the footer menu
+- Page has a hero header with light contrast background (#f0e6f7 by default, changes with selected team theme), centred square logo (default logo-teamstream-fallback.png - custom logos can be uploaded from settings). Under the logo is the team name. Default [Team NewsLab] #5422b0 - overwritten with team names and colours when created by teams in Settings). There is a horizontal border in the primary team colour under the hero background (default: #5422b0)
+- Team stream displays a scrolling preview  list of articles published by all members of the team. 
+- Basic layout of previews is the same as the user Published tab
+- Headlines in team stream (and in Published and Draft tabs), have a purple hover effect on desktop browsers
+- Editors (and Trainer + Guest Editor if present) see three-dot menus next to EVERY story in the team stream. See team1.png
+- Non-editors see NO three dot menus. For non-editors, the Team Stream is read only. See team2.png
+- For Editors, Trainer (and Guest Editor) tapping the three dot menu launches a toolbar between the end of the story snippet and separator. When active the three dot menu turns #5422b0
 
-if (currentPins.length >= 3) {
-  // Auto-unpin oldest
-  const oldestPin = currentPins[2]
-  await supabase.from('stories').update({ is_pinned: false, pin_index: null }).eq('id', oldestPin.id)
-}
+The toolbar**
+	- With fine separators between elements, comprises: [trash icon][Unpublish][Export][Pin icon toggle outline/fill][Edit] See team3.png
+	- Trash: Tapping the trash icon in the toolbar extends the toolbar to the left with a [Delete?] Confirmation. Tapping delete deletes the story.
+	- Unpublish. Tapping Unpublished puts the story back into the Home/Drafts tab of the individual journalist
+	- Export. Triggers a dropdown #f0e6f7 (or team theme) with options for PDF or TXT export. See team4.png
+	- Pin toggle. See below
 
-// Then pin new story
-await supabase.from('stories').update({
-  is_pinned: true,
-  pin_timestamp: new Date(),
-  pin_index: 0
-}).eq('id', storyId)
+The Pin**
+	- Pinned stories appear ONLY at the top of the Team Stream (not at the top of the user’s Published tab). Pinned stories are a function restricted to the Team Stream.
+	- In the Team Stream pin stories carry a pin icon icon-pin.svg to the left of the journalist name, aligned left under the headline and text snippet. See team3.png
+	- A maximum of THREE pinned stories can appear at the top of the Team Stream, added by editors only. Pinned stories appear with the most recently pinned stories at the top of the Team Stream. If, for example, three pinned stories exist on the Team Stream, and another story is pinned, the pin is automatically removed from the oldest pinned story. This unpinned story now appears in normal date order within the Team Stream.
+	- Editors/Trainer/Guest Editor can toggle pins on and off using the button in the Team Stream toolbar.
 
-// Re-index remaining pins
-const pins = await supabase.from('stories').select('*').eq('is_pinned', true).order('pin_timestamp', { ascending: false })
-for (let i = 0; i < pins.length; i++) {
-  await supabase.from('stories').update({ pin_index: i }).eq('id', pins[i].id)
-}
-```
+Preview**
+- tapping a story in the team stream launches a drawer from the bottom of the page with the individual story displayed. See team5.png
+- The top of the page displays the team theme colour, logo and team name
+- The format is as Draft preview: Byline to top left, under which is the headline then content.
+- The drawer is closed with a close x #777777 on #efefef circle background.
 
-**Activity Log:**
-Create entry for: published, unpublished, edited, pinned, unpinned, deleted
 
-**Design References:**
-- Publish toolbar: write6.png, write7.png
-- User Home Drafts tab: user3.png (empty), user4.png (with stories)
-- User Home Published tab: user8.png (empty), user9.png (with stories)
-- Team Stream: team1.png, team2.png
-- Story card layout: user8.png, team1.png (shows thumbnail, headline, summary, author, timestamp)
-- Three-dot menu in Published tab: user9.png
-- Three-dot menu in Team Stream (editors only): team1.png right side
-- Pinned badge: user10.png (small icon next to headline)
-- Story detail drawer: team2.png (full-screen story view)
-- Select all: user7.png, user11.png, user12.png
-
-**Acceptance Criteria:**
-- [ ] Publish button disabled until headline filled
-- [ ] Clicking Publish shows toolbar with pin toggle
-- [ ] Toggling pin shows "Pin this story?" option
-- [ ] Publish confirmation saves story with status='published'
-- [ ] Story appears in author's Published tab within 1s
-- [ ] Story appears in Team Stream within 1s (Realtime)
-- [ ] Team Stream sorted: pinned stories first (newest pin first), then unpinned (newest first)
-- [ ] Three-dot menu visible to editors in Team Stream (all stories)
-- [ ] Three-dot menu visible to authors in Published tab (own stories only)
-- [ ] Unpublish moves story back to Drafts
-- [ ] Pinned story shows badge/indicator
-- [ ] Max 3 pins enforced; 4th pin auto-removes oldest
-- [ ] Delete story removes from database + Team Stream + Published tab
-- [ ] Story detail drawer shows full formatted story (matching DESIGN.md layout)
-- [ ] Select all mode: shows radio buttons, trash icon activates, deletion confirmed
-- [ ] Activity log entries created for all actions
+Acceptance Criteria:**
+- [ ] Publish button in Write drawer shows a toolbar with pin toggle (`write6.png`).
+- [ ] Published story appears immediately in the "Published" tab and "Team Stream".
+- [ ] Story cards in all lists match the layout of `user8.png`.
+- [ ] Three-dot menus reveal the correct actions for the context (Drafts vs. Published vs. Team Stream for editors).
+- [ ] Pinned stories appear first in the Team Stream, marked with a pin icon (`team3.png`).
+- [ ] The "Select All" flow works as designed in `user7.png` and `user11.png` for bulk deletion.
+- [ ] Tapping a story card in the Team Stream opens the full-screen Story Detail Drawer (`team2.png`, `team5.png`).
 
 ---
 
@@ -619,57 +685,25 @@ Create entry for: published, unpublished, edited, pinned, unpinned, deleted
 - [ ] Editors can edit any story from Team Stream (no lock restriction on editors)
 - [ ] Discard changes confirmation (if unsaved changes)
 
-**Routes:** Handled as drawer modal (Phase 2)
-
 **Components:**
 - Update `WriteDrawer.svelte` to accept pre-filled story data
 - Add `LockWarning.svelte` — Banner showing lock status
 - Update `ToolbarBottom.svelte` — "Save Changes" button (instead of "Publish")
 
-**Supabase Queries:**
-- Check lock: `SELECT locked_by, locked_at FROM stories WHERE id = $1`
-- Set lock: `UPDATE stories SET locked_by = $1, locked_at = NOW() WHERE id = $2`
-- Release lock: `UPDATE stories SET locked_by = NULL WHERE id = $1`
-- Get story: `SELECT * FROM stories WHERE id = $1 RETURNING *`
-
-**Lock Auto-unlock (Supabase Edge Function):**
-```sql
--- Periodic function (cron job, every 1 minute)
-CREATE OR REPLACE FUNCTION auto_unlock_stories() RETURNS void AS $$
-BEGIN
-  UPDATE stories
-  SET locked_by = NULL
-  WHERE locked_at < NOW() - INTERVAL '5 minutes'
-  AND locked_by IS NOT NULL;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger on Postgres (via cron extension or external scheduler)
-```
-
-**Permission Model (Edit Access):**
-| Role | Own Draft | Own Published | Team Stream All | Team Stream Own |
-|------|-----------|---------------|-----------------|-----------------|
-| Journalist (non-editor) | Yes | Yes | No | No |
-| Journalist (editor) | Yes | Yes | Yes | Yes |
-| Trainer | Yes | Yes | Yes | Yes |
-| Guest Editor | N/A | N/A | Yes | N/A |
-
-**Design References:**
-- Edit flow: Part of DESIGN.md section "3 Write Page" (same Write drawer, but pre-filled)
-- Lock warning: CHECKLIST.md mentions "Story is being edited by [Name]" message
+**Design & UI/UX Focus:**
+- **Goal:** Implement the logic for editing and preventing concurrent edits, with clear user feedback.
+- **Visuals:** The primary UI is the existing Write Drawer (`write1.png`). No new specific visuals exist for the lock warning.
+- **Key Elements:**
+    - **Edit Flow:** The Write Drawer should look identical to the creation flow, but be pre-populated with the story's content. The main action button in the toolbar should be "Save Changes", not "Publish".
+    - **Lock Warning:** A non-intrusive but clear warning banner or modal should be displayed when a story is locked. It should state "Story is being edited by [Name]" and provide a way to go back. The inputs in the Write Drawer must be disabled.
 
 **Acceptance Criteria:**
-- [ ] Edit button in Published tab opens Write drawer with pre-filled data
-- [ ] Edit button in Team Stream (editors only) opens Write drawer
-- [ ] Story lock set when edit drawer opens
-- [ ] If locked by other journalist: Lock warning banner shown, inputs disabled
-- [ ] If locked by self (previous session): Lock auto-removed, editor loads normally
-- [ ] Save Changes button updates story + releases lock
-- [ ] Lock released after 5 minutes inactivity
-- [ ] Non-editors: No edit button visible in Team Stream
-- [ ] Editors: Edit button visible for all stories in Team Stream
-- [ ] Unsaved changes confirmation on close/discard
+- [ ] Edit button in "Published" tab or "Team Stream" opens the Write drawer pre-filled with that story's data.
+- [ ] When opening an editable story, a lock is acquired in the database.
+- [ ] Attempting to edit a story locked by another user shows a clear warning message, and all editing fields are disabled.
+- [ ] "Save Changes" button updates the story and releases the lock.
+- [ ] The lock is automatically released after 5 minutes of inactivity.
+- [ ] Non-editors do not see an "Edit" option in the three-dot menu for stories in the Team Stream.
 
 ---
 
@@ -700,10 +734,6 @@ $$ LANGUAGE plpgsql;
 - [ ] Edit team settings from trainer Teams tab (change color, upload logo, team name, manage editors)
 - [ ] Trainer/Guest Editor can toggle team member editor status
 
-**SvelteKit Routes:**
-- `src/routes/[courseId]/settings/+page.svelte` — Settings with Teams + Admin tabs (conditional display)
-- Drawers handled by Svelte stores
-
 **Components to Build:**
 - Update `SettingsPage.svelte` to add Teams + Admin tabs
 - `TeamsTab.svelte` — List of all teams with expand/collapse
@@ -715,70 +745,55 @@ $$ LANGUAGE plpgsql;
 - `FallbackImageUpload.svelte` — Fallback thumbnail for stories without images
 - `ClearCourseModal.svelte` — Destructive deletion confirmation
 
-**Supabase Queries:**
-- Get all teams: `SELECT * FROM teams WHERE course_id = $1 ORDER BY created_at`
-- Get team members: `SELECT * FROM journalists WHERE course_id = $1 AND team_name = $2 ORDER BY created_at`
-- Remove member: `DELETE FROM journalists WHERE course_id = $1 AND name = $2`
-- Update team settings: `UPDATE teams SET primary_color = $1, secondary_color = $2, logo_url = $3, team_name = $4 WHERE course_id = $5 AND team_name = $6`
-- Get activity log: `SELECT * FROM activity_log WHERE course_id = $1 ORDER BY created_at DESC LIMIT 100`
-- Clear course: `DELETE FROM newslabs WHERE course_id = $1 CASCADE` (triggers cascade deletes)
-- Update IDs: `UPDATE newslabs SET trainer_id = $1, guest_editor_id = $2 WHERE course_id = $3`
+**Design & UI/UX Focus:**
+Visuals: trainer1.png, trainer2.png, trainer3.png, trainer4.png
+Icons: icon-collapse.svg, icon-expand.svg, 
 
-**Permission Model (Trainer vs Guest Editor vs Journalist):**
+- The trainer requires additional privileges in order to monitor and edit stories created across all teams, set training IDs and delete content at the end of courses. 
+- At the same time it is important the trainer is able to demonstrate the app exactly as it appears to everyone else.
+- For the above reasons the trainer app is identical to the app used by journalists EXCEPT for two additional tabs in the settings (+ editor privileges in editing stories from the team streams)
+- The trainer is able to access these additional functions by using a separate ID.
+- Optionally there may be one (or more) guest editors. I propose there is also a Guest Editor ID which gives access to all the Editor functions, plus the Settings/Teams Tab (which means the Guest editor can monitor and edit stories for all teams). The Guest Editor access does NOT include the Admin tab, so the guest editor cannot set IDs or delete all course content and data.
 
-| Action | Journalist | Editor | Trainer | Guest Editor |
-|--------|-----------|--------|---------|--------------|
-| View own drafts | Yes | Yes | N/A | N/A |
-| View own published | Yes | Yes | N/A | N/A |
-| Edit own published | Yes | Yes | N/A | N/A |
-| View Team Stream | Yes | Yes | Yes* | Yes |
-| Edit stories in Team Stream | No | Yes | Yes | Yes |
-| Pin stories | No | Yes | Yes | Yes |
-| View Teams tab | No | No | Yes | Yes |
-| Edit team settings (color, logo, name) | No | No | Yes | No |
-| Toggle editor status | No | No | Yes | No |
-| Remove team members | No | No | Yes | No |
-| View Activity Log | No | No | Yes | No |
-| View Admin tab | No | No | Yes | No |
-| Clear Course | No | No | Yes | No |
+Settings Tab**
+- The basic settings tab for the trainer is identical to everyone else. If the trainer needed to, they could join or set up a team. While demonstrating the app, the trainer would do just that, join or create a team to show how it works. See trainer1.png
 
-*Trainer can view all teams' streams via Teams tab preview icon
+Teams Tab**
+- All settings and privileges here apply to both Trainer and Guest editor
+- The teams tab is where the trainer can monitor all content by all teams. At first the tab is empty except for placeholder text [Teams and members appear here] #999999. See trainer2.png
+- As journalists create and join teams, these are displayed automatically in the trainer’s Teams tab. See trainer3.png
+- Teams are displayed as a series of #efefef dropdown bars (for example, Team A is displayed in the bar, with an expand chevron to the right, which opens to show all member names in the same style as the Team’s own settings pages. See trainer3.png
+- The trainer can also see,  and control if required, the public team stream URL toggle
+- The trainer can assign or remove editors and, if required, remove individuals from teams using the buttons in the team member list, as in the basic settings.
+- The [Leave the team?] toolbar also applies to the trainer Teams view.
+- To the right of team names is a view (icon-preview.svg). When tapped, this launches a drawer (bottom to top) with the Team Stream (thumbnails view - see team1.png). There is an x close to close the drawer.
+- The trainer can edit all stories by tapping edit in the three-dot menu
+- Tapping a story launches a secondary drawer from left to right with individual stories. The left arrow (icon-arrow-left.svg #777777 on a #efefef circle background to top left slides the drawer closed, returning to the Team Stream).
+- Using the Teams tab, the trainer can both monitor and edit all stories, and also give feedback to the whole course group using projection.
 
-**Design References:**
-- Teams tab: DESIGN.md section "6 Trainer Settings", trainer2.png, trainer3.png
-- Team expanded view: trainer3.png
-- Teams tab with edit options: User will provide updated visual
-- Activity log: CHECKLIST.md mentions; table format with columns: Journalist, Team, Action, Story Title, Timestamp
-- Admin tab: DESIGN.md section "6 Trainer Settings", trainer4.png, trainer5.png
-- Danger Zone: Trainer4.png shows "Danger zone" with "Clear NewsLab" button
+** Admin Tab**
+- This page is only visible by the Trainer - no-one else including guest editor 
+- The trainer admin tab contains core app functions, which the trainer would not wish to be seen while presenting. Therefore the functions are given a separate tab. See trainer4.png. 
+The tab comprises:**
+    - Trainer ID input window, where the trainer sets the unique ID giving additional privileges. A grey #777777 circle (icon-circle-svg) turns into a purple check (icon-check.svg) when submitted and accepted.
+	- Course ID. The ID entered by all course participants. The Course ID check would become active when submitted and activated.
+    - Guest Editor ID. This is to set an ID different to the Trainer ID for professional observers. Guest editors have all privileges of the Trainer EXCEPT for the Admin tab. In the same was as the Trainer ID, the Course ID and Guest ID check would become active when submitted and activated.
+    - Thumbnail fallback image. If no image is uploaded with a story, the square image added here would be automatically pulled as the thumbnail.
+    - Danger zone. Button to reset the app, deleting all teams, members and content. Three step approach: Initial deletion button + input window with placeholder #999999 text [Type the word: Rudiment] + final delete button with ‘DELETE EVERYTHING. ARE YOU SURE?’
 
 **Acceptance Criteria:**
-- [ ] Trainer password detected at login; role set to 'trainer'
-- [ ] Guest Editor password detected; role set to 'guest_editor'
-- [ ] Trainer sees Teams + Admin tabs in Settings
-- [ ] Guest Editor sees Teams tab only (no Admin tab)
-- [ ] Teams tab lists all teams with member count, story count
-- [ ] Expanding team shows all members with X button
-- [ ] X next to member removes them from team
-- [ ] Last member removed: Team auto-deleted
-- [ ] Preview icon opens Team Stream for that team in drawer
-- [ ] Trainer can edit team color, logo, name, editor status from Teams tab
-- [ ] Trainer can view/edit all stories (no lock warning)
-- [ ] Trainer can pin/unpin any story
-- [ ] Trainer can delete any story
-- [ ] Activity log shows all actions (publish, unpublish, edit, pin, unpin, delete, join, leave)
-- [ ] Admin tab: ID inputs with validation checkmarks
-- [ ] Admin tab: Fallback image upload + preview
-- [ ] Clear Course flow: Confirmation dialog → "DELETE" input → Final confirmation
-- [ ] After Clear Course: All data deleted, redirect to splash
-- [ ] Guest Editor sees Teams tab, can edit all stories, cannot see Admin tab
-- [ ] Guest Editor can pin/unpin, cannot clear course
+- [ ] Trainer login reveals "Teams" and "Admin" tabs in Settings.
+- [ ] Guest Editor login reveals "Teams" tab only.
+- [ ] "Teams" tab lists all teams; clicking a team expands it to show members (`trainer3.png`).
+- [ ] The preview icon (`icon-preview.svg`) next to a team name opens that team's stream.
+- [ ] Trainer can remove members and manage editor status from the "Teams" tab.
+- [ ] "Admin" tab provides inputs for Course, Trainer, and Guest Editor IDs, which are functional.
+- [ ] The "Clear Course" button initiates a multi-step confirmation process to prevent accidental deletion.
 
 ---
 
 ## Phase 8: Export, Public Share & Polish
 
-**Duration:** 4-5 days  
 **Dependencies:** Phase 7  
 **Deliverables:**
 - [ ] PDF export (individual story): Title, image, body, author, date
@@ -800,95 +815,28 @@ $$ LANGUAGE plpgsql;
 - [ ] E2E tests (Playwright or Cypress): Full journalist flow, trainer admin, offline sync
 - [ ] Documentation: README with setup + deployment instructions
 
-**SvelteKit Routes:**
-- `src/routes/share/[teamName]/+page.svelte` — Public Team Stream (no auth required)
-- All `[courseId]/*` routes remain protected via layout guards
-
 **Components to Build:**
 - `ExportButton.svelte` — Dropdown with export format options
 - `PDFExporter.svelte` — Client-side PDF generation (jsPDF + html2canvas)
 - `PublicTeamStream.svelte` — Read-only Team Stream view (no edit menus)
 - `AccessibilityAudit.svelte` — Component testing focus/contrast
 
-**Supabase Queries:**
-- Get team by share token: `SELECT * FROM teams WHERE public_share_token = $1`
-- Get stories for public view: `SELECT * FROM stories WHERE course_id = $1 AND team_name = $2 AND status = 'published' AND share_enabled = true`
-
-**Public Share URL Generation:**
-```javascript
-// When team is created:
-const public_share_token = crypto.randomUUID()
-await supabase.from('teams').update({ public_share_token }).where('...')
-
-// Public URL: newslab.app/share/team-name
-// Route handler fetches team by team_name + course_id
-// Validates share_enabled = true before rendering
-```
-
-**PDF Export Logic:**
-```javascript
-// Individual story PDF
-const element = document.getElementById('story-content')
-const canvas = await html2canvas(element)
-const pdf = new jsPDF()
-pdf.addImage(canvas.toDataURL(), 'PNG', 0, 0, 210, 297)
-pdf.save('story-title.pdf')
-
-// Team stream PDF
-// Loop through all stories, add each as new page with page break
-```
-
-**Accessibility Checklist:**
-- [ ] Color contrast >= 4.5:1 for all text
-- [ ] Focus states visible on all interactive elements
-- [ ] Aria labels on buttons, icons
-- [ ] Keyboard navigation (Tab, Enter, Escape work)
-- [ ] No color-only indicators (combine with icons/text)
-- [ ] Images have alt text (Cloudinary images use title as fallback)
-
-**Performance Targets:**
-- [ ] Lighthouse score >= 85 (mobile)
-- [ ] First Contentful Paint < 2s
-- [ ] Largest Contentful Paint < 2.5s
-- [ ] Interaction to Next Paint < 200ms
-- [ ] Cumulative Layout Shift < 0.1
-
-**Testing Checklist:**
-- [ ] Create story → Publish → Appears in Team Stream within 1s
-- [ ] Concurrent edit: User A editing → User B sees "being edited" message
-- [ ] Offline: Edit draft → Go online → Auto-syncs to Supabase
-- [ ] Team join/leave: Real-time updates
-- [ ] Trainer clear: All data deleted
-- [ ] PDF export: Renders all content types (images, text, links, embeds)
-- [ ] Mobile responsive: 390px (iPhone SE) + 768px (iPad)
-- [ ] Public share: Non-authenticated user can access team stream, no edit access
-
-**Design References:**
-- Export dropdown: User9.png (three-dot menu shows Export option)
-- Public Team Stream: Same as team1.png (read-only version)
-- Public view header: Show team branding (logo, color, name, members)
-
-**Deployment:**
-- [ ] GitHub Actions CI/CD configured (tests on PR)
-- [ ] Cloudflare Pages: Auto-deploy on push to main
-- [ ] Environment secrets configured in Cloudflare Pages
-- [ ] Supabase production database tested
-- [ ] Cloudinary production account verified
+**Design & UI/UX Focus:**
+- **Goal:** Finalize the app with export features, public sharing, and a final polish pass.
+- **Visuals:** Reference `user9.png` for the Export menu concept. The public share page should be a read-only version of `team1.png`.
+- **Key Elements:**
+    - **Export Menu:** The "Export" option in the three-dot menu should trigger a dropdown with "PDF" and "TXT" options. This dropdown should have a light background (`#f0e6f7` or team secondary color). See `user6.png` for a similar dropdown concept.
+    - **Public Share Page:** This page should be a clean, read-only version of the Team Stream. It must include the team header (logo, name, color) but have no footer navigation and no three-dot menus or other interactive elements on the story cards.
+    - **Polishing:** This is the phase to ensure all animations are smooth, focus states are clear for accessibility, and all UI elements are pixel-perfect according to the design visuals.
 
 **Acceptance Criteria:**
-- [ ] Export button visible in three-dot menus
-- [ ] PDF export downloads cleanly with correct filename
-- [ ] TXT export shows plain text (no HTML)
-- [ ] Public URL accessible without login
-- [ ] Public Team Stream displays stories + team branding
-- [ ] Public view has no edit buttons/menus
-- [ ] All text meets WCAG AA contrast requirements
-- [ ] Focus indicators visible on all buttons (Tab key)
-- [ ] Aria labels on all interactive elements
-- [ ] Mobile layout works at 390px width
-- [ ] Lighthouse score >= 85
-- [ ] E2E test suite passes (full flows)
-- [ ] README contains setup + deployment steps
+- [ ] "Export" option in three-dot menus opens a sub-menu to select PDF or TXT.
+- [ ] PDF export generates a clean document with the story content.
+- [ ] Public share URL (`/share/[teamName]`) is accessible without login and displays a read-only version of the team stream.
+- [ ] The public page correctly displays the team's branding (logo, color, name).
+- [ ] All interactive elements must have clear focus states for keyboard navigation.
+- [ ] All text must meet WCAG AA color contrast ratios.
+- [ ] The final app achieves a Lighthouse score of >= 85 on mobile.
 
 ---
 

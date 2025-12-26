@@ -4,6 +4,9 @@ import adapter from '@sveltejs/adapter-auto'
 export default {
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter()
+    adapter: adapter(),
+    alias: {
+      $components: 'src/components'
+    }
   }
 }
