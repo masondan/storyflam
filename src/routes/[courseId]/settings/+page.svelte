@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import { goto } from '$app/navigation'
   import { session, showNotification, teamColors, isTrainer, isGuestEditor } from '$lib/stores'
   import { supabase } from '$lib/supabase'
   import type { Team, Journalist } from '$lib/types'
@@ -538,6 +539,11 @@
       showNotification('error', 'Failed to update sharing')
     }
   }
+
+  function handleLogout() {
+    session.logout()
+    goto('/')
+  }
 </script>
 
 <svelte:head>
@@ -873,6 +879,17 @@
             <p class="text-[#999999] text-sm mt-2">Team members will appear here</p>
           </div>
         {/if}
+
+        <!-- Logout Button -->
+        <div class="mt-8 pt-6 border-t border-[#efefef]">
+          <button
+            type="button"
+            on:click={handleLogout}
+            class="w-full py-3 text-[#777777] text-sm font-medium"
+          >
+            Log out
+          </button>
+        </div>
       </div>
     {/if}
 

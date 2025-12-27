@@ -122,12 +122,7 @@ export async function validateByline(courseId: string, name: string, role: UserR
       return { success: true, isReturning: true }
     }
     
-    // For non-journalists, no need to create a record
-    if (role !== 'journalist') {
-      return { success: true, isReturning: false }
-    }
-    
-    // Create journalist record
+    // Create journalist record for all roles (trainers/guest_editors need to be able to join teams too)
     const { error: insertError } = await supabase
       .from('journalists')
       .insert({
