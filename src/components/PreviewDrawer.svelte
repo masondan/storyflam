@@ -27,7 +27,7 @@
 </script>
 
 <div
-  class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-[55] bg-white flex flex-col max-h-screen"
+  class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-[55] bg-white flex flex-col h-svh"
   transition:fly={{ x: '100%', duration: 300 }}
 >
     <!-- Team Header -->

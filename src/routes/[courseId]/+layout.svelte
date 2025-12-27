@@ -13,7 +13,7 @@
   }
 </script>
 
-<div class="min-h-screen bg-white">
+<div class="min-h-screen bg-white md:shadow-2xl md:mx-auto md:max-w-[480px]">
   <slot />
   <FooterNav />
   <WriteDrawer />
