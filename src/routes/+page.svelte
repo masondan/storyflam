@@ -82,6 +82,32 @@
       handleBylineSubmit()
     }
   }
+
+  function resetCourseInput() {
+    courseIdInput = ''
+    courseIdStatus = 'idle'
+    errorMessage = ''
+  }
+
+  function resetBylineInput() {
+    bylineInput = ''
+    bylineStatus = 'idle'
+    errorMessage = ''
+  }
+
+  function handleCourseInputChange() {
+    if (courseIdStatus === 'invalid') {
+      courseIdStatus = 'idle'
+      errorMessage = ''
+    }
+  }
+
+  function handleBylineInputChange() {
+    if (bylineStatus === 'invalid') {
+      bylineStatus = 'idle'
+      errorMessage = ''
+    }
+  }
 </script>
 
 <svelte:head>
@@ -112,6 +138,7 @@
         on:focus={() => courseInputFocused = true}
         on:blur={() => courseInputFocused = false}
         on:keydown={handleCourseKeydown}
+        on:input={handleCourseInputChange}
         placeholder="Enter your course key"
         disabled={courseIdStatus === 'valid'}
         class="flex-1 bg-transparent px-4 py-3 text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
@@ -126,12 +153,16 @@
           </svg>
         </div>
       {:else if courseIdStatus === 'invalid'}
-        <!-- X icon: purple circle with white X -->
-        <div class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center">
+        <!-- X icon: purple circle with white X (clickable to reset) -->
+        <button
+          on:click={resetCourseInput}
+          type="button"
+          class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
             <path d="M12 10.5858L16.2426 6.34315L17.6568 7.75736L13.4142 12L17.6568 16.2426L16.2426 17.6569L12 13.4142L7.75736 17.6569L6.34315 16.2426L10.5858 12L6.34315 7.75736L7.75736 6.34315L12 10.5858Z"/>
           </svg>
-        </div>
+        </button>
       {:else if courseInputFocused || courseIdInput}
         <!-- Send icon: purple circle with white arrow -->
         <button
@@ -163,6 +194,7 @@
           on:focus={() => bylineInputFocused = true}
           on:blur={() => bylineInputFocused = false}
           on:keydown={handleBylineKeydown}
+          on:input={handleBylineInputChange}
           placeholder="Enter your byline"
           disabled={bylineStatus === 'valid'}
           class="flex-1 bg-transparent px-4 py-3 text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
@@ -177,12 +209,16 @@
             </svg>
           </div>
         {:else if bylineStatus === 'invalid'}
-          <!-- X icon: purple circle with white X -->
-          <div class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center">
+          <!-- X icon: purple circle with white X (clickable to reset) -->
+          <button
+            on:click={resetBylineInput}
+            type="button"
+            class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
               <path d="M12 10.5858L16.2426 6.34315L17.6568 7.75736L13.4142 12L17.6568 16.2426L16.2426 17.6569L12 13.4142L7.75736 17.6569L6.34315 16.2426L10.5858 12L6.34315 7.75736L7.75736 6.34315L12 10.5858Z"/>
             </svg>
-          </div>
+          </button>
         {:else if bylineInputFocused || bylineInput}
           <!-- Send icon: purple circle with white arrow -->
           <button
