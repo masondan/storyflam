@@ -1000,7 +1000,7 @@
     style="--selection-color: #{$teamColors.secondary};"
   >
     <!-- Header -->
-    <header class="flex items-center justify-between px-4 py-3 shrink-0">
+    <header class="flex items-center justify-between px-4 py-3 shrink-0 border-b border-[#efefef]">
       <button
         on:click={closeDrawer}
         class="w-8 h-8 rounded-full bg-[#efefef] flex items-center justify-center"
@@ -1023,24 +1023,26 @@
       </div>
     </header>
 
+    <!-- Title Input (Sticky, stays above keyboard) -->
+    <div class="sticky top-0 bg-white z-40 px-4 py-3 border-b border-[#efefef] shrink-0">
+      <textarea
+        bind:value={title}
+        on:input={scheduleAutoSave}
+        placeholder="Title"
+        class="title-input w-full text-2xl font-semibold text-[#333333] outline-none placeholder:text-[#999999] resize-none overflow-hidden"
+        rows="1"
+        maxlength="200"
+        on:input={(e) => {
+          const target = e.currentTarget;
+          target.style.height = 'auto';
+          target.style.height = target.scrollHeight + 'px';
+        }}
+      ></textarea>
+    </div>
+
     <!-- Content -->
     <main class="flex-1 px-4 overflow-y-auto pb-4">
-      <div class="space-y-1">
-        <!-- Title -->
-        <textarea
-          bind:value={title}
-          on:input={scheduleAutoSave}
-          placeholder="Title"
-          class="title-input w-full text-2xl font-semibold text-[#333333] outline-none placeholder:text-[#999999] resize-none overflow-hidden"
-          rows="1"
-          maxlength="200"
-          on:input={(e) => {
-            const target = e.currentTarget;
-            target.style.height = 'auto';
-            target.style.height = target.scrollHeight + 'px';
-          }}
-        ></textarea>
-
+      <div class="space-y-1 pt-3">
         <!-- Featured Image -->
         {#if featuredImageUrl}
           <div class="relative">

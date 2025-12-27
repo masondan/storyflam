@@ -57,7 +57,7 @@
     if (result.success) {
       bylineStatus = 'valid'
 
-      const newSession = createSession(validatedCourseId, bylineInput.trim(), detectedRole)
+      const newSession = createSession(validatedCourseId, bylineInput.trim(), detectedRole, result.teamName)
       session.set(newSession)
 
       showNotification('success', `Welcome ${bylineInput.trim()}`)

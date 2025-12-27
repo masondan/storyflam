@@ -558,10 +558,9 @@
         type="button"
         on:click={() => activeTab = 'settings'}
         class="text-xl font-semibold transition-colors pb-1 border-b-2"
-        class:text-[#5422b0]={activeTab === 'settings'}
-        class:border-[#5422b0]={activeTab === 'settings'}
         class:text-[#777777]={activeTab !== 'settings'}
         class:border-transparent={activeTab !== 'settings'}
+        style={activeTab === 'settings' ? `color: #${primaryColor}; border-bottom-color: #${primaryColor};` : ''}
       >
         Settings
       </button>
@@ -571,10 +570,9 @@
           type="button"
           on:click={() => activeTab = 'teams'}
           class="text-xl font-semibold transition-colors pb-1 border-b-2"
-          class:text-[#5422b0]={activeTab === 'teams'}
-          class:border-[#5422b0]={activeTab === 'teams'}
           class:text-[#777777]={activeTab !== 'teams'}
           class:border-transparent={activeTab !== 'teams'}
+          style={activeTab === 'teams' ? `color: #${primaryColor}; border-bottom-color: #${primaryColor};` : ''}
         >
           Teams
         </button>
@@ -585,10 +583,9 @@
           type="button"
           on:click={() => activeTab = 'admin'}
           class="text-xl font-semibold transition-colors pb-1 border-b-2"
-          class:text-[#5422b0]={activeTab === 'admin'}
-          class:border-[#5422b0]={activeTab === 'admin'}
           class:text-[#777777]={activeTab !== 'admin'}
           class:border-transparent={activeTab !== 'admin'}
+          style={activeTab === 'admin' ? `color: #${primaryColor}; border-bottom-color: #${primaryColor};` : ''}
         >
           Admin
         </button>

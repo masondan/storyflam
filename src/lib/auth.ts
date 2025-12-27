@@ -7,7 +7,7 @@ export type AuthResult =
   | { success: false; error: string }
 
 export type BylineResult =
-  | { success: true; isReturning: boolean }
+  | { success: true; isReturning: boolean; teamName?: string }
   | { success: false; error: string }
 
 // Input validation constants
@@ -119,7 +119,18 @@ export async function validateByline(courseId: string, name: string, role: UserR
     }
     
     if (existingJournalist) {
-      return { success: true, isReturning: true }
+      // Fetch full journalist record to get team_name
+      const { data: fullJournalist } = await supabase
+        .from('journalists')
+        .select('team_name')
+        .eq('id', existingJournalist.id)
+        .single()
+      
+      return { 
+        success: true, 
+        isReturning: true,
+        teamName: fullJournalist?.team_name || undefined
+      }
     }
     
     // Create journalist record for all roles (trainers/guest_editors need to be able to join teams too)
@@ -147,12 +158,12 @@ export async function validateByline(courseId: string, name: string, role: UserR
   }
 }
 
-export function createSession(courseId: string, name: string, role: UserRole): Session {
+export function createSession(courseId: string, name: string, role: UserRole, teamName?: string): Session {
   return {
     courseId,
     name,
     role,
-    teamName: null,
+    teamName: teamName || null,
     sessionToken: crypto.randomUUID(),
     loginTimestamp: Date.now()
   }
