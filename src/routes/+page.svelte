@@ -88,9 +88,9 @@
   <title>NewsLab - Login</title>
 </svelte:head>
 
-<div class="min-h-screen bg-accent-brand flex flex-col items-center justify-center px-6">
-  <!-- Logo -->
-  <div class="mb-16">
+<div class="min-h-screen bg-accent-brand flex flex-col items-center px-6 relative">
+  <!-- Logo - centered -->
+  <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
     <img
       src="/icons/logo-textlogo-white.png"
       alt="NewsLab"
@@ -99,7 +99,7 @@
   </div>
 
   <!-- Input Container -->
-  <div class="w-full max-w-sm space-y-4">
+  <div class="w-full max-w-xs space-y-4 absolute top-2/3 left-1/2 transform -translate-x-1/2">
     <!-- Course ID Input -->
     <div
       class="relative flex items-center bg-white rounded-lg overflow-hidden"
