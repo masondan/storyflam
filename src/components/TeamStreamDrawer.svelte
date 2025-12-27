@@ -73,7 +73,7 @@
 
 {#if open}
   <div
-    class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-50 bg-white flex flex-col max-h-screen"
+    class="fixed inset-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-50 bg-white flex flex-col"
     transition:fly={{ y: '100%', duration: 300 }}
   >
     <!-- Team Header -->
@@ -81,6 +81,21 @@
       class="py-6 text-center sticky top-0 z-40 shrink-0"
       style="background-color: #{secondaryColor}cc;"
     >
+      <!-- Close button (in header for better interaction) -->
+      <button
+        type="button"
+        on:click={closeDrawer}
+        class="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center hover:bg-white transition-colors"
+        aria-label="Close"
+      >
+        <img
+          src="/icons/icon-close.svg"
+          alt=""
+          class="w-4 h-4"
+          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+        />
+      </button>
+
       <div 
         class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden"
       >
@@ -94,20 +109,6 @@
         {teamName || teamNameToView || 'Team NewsLab'}
       </h1>
     </header>
-
-    <!-- Close button -->
-    <button
-      on:click={closeDrawer}
-      class="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center z-10 outline-none focus:outline-none"
-      aria-label="Close"
-    >
-      <img
-        src="/icons/icon-close.svg"
-        alt=""
-        class="w-4 h-4"
-        style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-      />
-    </button>
 
     <!-- Content Area -->
     <main class="flex-1 px-4 overflow-y-auto">
