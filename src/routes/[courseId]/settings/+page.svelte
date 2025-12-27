@@ -4,14 +4,18 @@
   import { session, showNotification, teamColors, isTrainer, isGuestEditor } from '$lib/stores'
   import { supabase } from '$lib/supabase'
   import type { Team, Journalist } from '$lib/types'
+  import ConfirmationToolbar from '$components/ConfirmationToolbar.svelte'
   import ColorPalette from '$components/ColorPalette.svelte'
   import TeamMemberItem from '$components/TeamMemberItem.svelte'
   import TeamLogoUpload from '$components/TeamLogoUpload.svelte'
   import ShareToggle from '$components/ShareToggle.svelte'
+  import TeamLockToggle from '$components/TeamLockToggle.svelte'
   import TeamsTab from '$components/TeamsTab.svelte'
   import AdminTab from '$components/AdminTab.svelte'
 
   type TabType = 'settings' | 'teams' | 'admin'
+  type ConfirmationAction = null | 'create-team' | 'join-team' | 'leave-team' | 'make-editor'
+
   let activeTab: TabType = 'settings'
 
   // Byline state
@@ -23,25 +27,34 @@
   let bylineError = ''
   let bylineSaving = false
 
-  // Team state
-  let teamNameInput = ''
-  let teamEditing = false
-  let teamValidating = false
-  let teamValid: boolean | null = null
-  let teamError = ''
-  let teamSaving = false
-  let teamExists = false
+  // Create team state
+  let createTeamInput = ''
+  let createTeamValidating = false
+  let createTeamValid: boolean | null = null
+  let createTeamError = ''
+  let createTeamSaving = false
+
+  // Join team state
+  let availableTeams: Team[] = []
+  let selectedTeamForJoin: Team | null = null
+  let joiningTeam = false
+  let teamLocked = false
 
   // Team data
   let team: Team | null = null
   let teamMembers: Journalist[] = []
   let currentUserIsEditor = false
 
-  // Remove member state
+  // Confirmation & modals
+  let confirmationAction: ConfirmationAction = null
   let selectedMemberForRemoval: string | null = null
+  let selectedMemberForEditor: { name: string; willBeEditor: boolean } | null = null
+  let confirmationLoading = false
+  let deleteTeamConfirming = false
 
   // Realtime subscription
   let journalistsSubscription: ReturnType<typeof supabase.channel> | null = null
+  let teamsSubscription: ReturnType<typeof supabase.channel> | null = null
 
   $: courseId = $session?.courseId || ''
   $: currentUserName = $session?.name || ''
@@ -55,8 +68,9 @@
     originalBylineName = bylineName
 
     if ($session?.teamName) {
-      teamNameInput = $session.teamName
       await loadTeamData()
+    } else {
+      await loadAvailableTeams()
     }
 
     setupRealtimeSubscription()
@@ -65,6 +79,9 @@
   onDestroy(() => {
     if (journalistsSubscription) {
       supabase.removeChannel(journalistsSubscription)
+    }
+    if (teamsSubscription) {
+      supabase.removeChannel(teamsSubscription)
     }
   })
 
@@ -86,6 +103,38 @@
         }
       )
       .subscribe()
+
+    teamsSubscription = supabase
+      .channel('teams-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'teams',
+          filter: `course_id=eq.${courseId}`
+        },
+        () => {
+          if (!currentTeamName) {
+            loadAvailableTeams()
+          }
+        }
+      )
+      .subscribe()
+  }
+
+  async function loadAvailableTeams() {
+    if (!courseId) return
+
+    const { data } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('created_at', { ascending: false })
+
+    if (data) {
+      availableTeams = data
+    }
   }
 
   async function loadTeamData(teamNameOverride?: string) {
@@ -222,31 +271,29 @@
     showNotification('success', 'Saved')
   }
 
-  // Team name validation with debounce
-  let teamDebounceTimer: ReturnType<typeof setTimeout>
+  // Create team validation with debounce
+  let createTeamDebounceTimer: ReturnType<typeof setTimeout>
 
-  function handleTeamInput(event: Event) {
+  function handleCreateTeamInput(event: Event) {
     const input = event.target as HTMLInputElement
-    teamNameInput = input.value
+    createTeamInput = input.value
 
-    if (!teamNameInput.trim()) {
-      teamValid = null
-      teamError = ''
-      teamExists = false
+    if (!createTeamInput.trim()) {
+      createTeamValid = null
+      createTeamError = ''
       return
     }
 
-    clearTimeout(teamDebounceTimer)
-    teamValidating = true
-    teamDebounceTimer = setTimeout(validateTeamName, 300)
+    clearTimeout(createTeamDebounceTimer)
+    createTeamValidating = true
+    createTeamDebounceTimer = setTimeout(validateCreateTeamName, 300)
   }
 
-  async function validateTeamName() {
-    if (!teamNameInput.trim()) {
-      teamValidating = false
-      teamValid = null
-      teamError = ''
-      teamExists = false
+  async function validateCreateTeamName() {
+    if (!createTeamInput.trim()) {
+      createTeamValidating = false
+      createTeamValid = null
+      createTeamError = ''
       return
     }
 
@@ -254,137 +301,137 @@
       .from('teams')
       .select('id')
       .eq('course_id', courseId)
-      .eq('team_name', teamNameInput.trim())
+      .eq('team_name', createTeamInput.trim())
 
-    teamValidating = false
-    teamExists = !!(data && data.length > 0)
+    createTeamValidating = false
 
-    if (teamExists) {
-      teamValid = true
-      teamError = ''
+    if (data && data.length > 0) {
+      createTeamValid = false
+      createTeamError = 'Team already exists'
     } else {
-      teamValid = true
-      teamError = ''
+      createTeamValid = true
+      createTeamError = ''
     }
   }
 
-  function startTeamEdit() {
-    teamEditing = true
-    teamValid = null
-    teamError = ''
+  function openCreateTeamConfirmation() {
+    if (createTeamValid && createTeamInput.trim()) {
+      confirmationAction = 'create-team'
+    }
   }
 
-  function cancelTeamEdit() {
-    teamNameInput = currentTeamName || ''
-    teamEditing = false
-    teamValid = null
-    teamError = ''
+  function openJoinTeamConfirmation(team: Team) {
+    selectedTeamForJoin = team
+    teamLocked = team.team_lock ?? false
+    confirmationAction = 'join-team'
   }
 
-  async function saveTeamName() {
-    if (teamValid === false || teamSaving || !teamNameInput.trim()) return
+  function openLeaveTeamConfirmation(memberName: string) {
+    selectedMemberForRemoval = memberName
+    confirmationAction = 'leave-team'
+  }
 
-    teamSaving = true
-    const trimmedName = teamNameInput.trim()
+  function openMakeEditorConfirmation(memberName: string, willBeEditor: boolean) {
+    selectedMemberForEditor = { name: memberName, willBeEditor }
+    confirmationAction = 'make-editor'
+  }
+
+  async function confirmCreateTeam() {
+    if (!createTeamValid || createTeamSaving || !createTeamInput.trim()) return
+
+    confirmationLoading = true
+    const trimmedName = createTeamInput.trim()
 
     try {
-      if (teamExists) {
-        await joinExistingTeam(trimmedName)
-      } else {
-        await createNewTeam(trimmedName)
-      }
+      const shareToken = crypto.randomUUID()
 
-      teamEditing = false
+      const { error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          course_id: courseId,
+          team_name: trimmedName,
+          public_share_token: shareToken
+        })
+
+      if (teamError) throw teamError
+
+      const { error: journalistError } = await supabase
+        .from('journalists')
+        .update({
+          team_name: trimmedName,
+          is_editor: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('course_id', courseId)
+        .eq('name', currentUserName)
+
+      if (journalistError) throw journalistError
+
+      session.set({
+        ...$session!,
+        teamName: trimmedName
+      })
+
+      createTeamInput = ''
+      createTeamValid = null
+      confirmationAction = null
+      showNotification('success', `Created team "${trimmedName}"`)
+      await loadTeamData(trimmedName)
     } catch (error) {
-      console.error('Team save error:', error)
-      showNotification('error', 'Failed to save. Try again.')
+      console.error('Create team error:', error)
+      showNotification('error', 'Failed to create team. Try again.')
     } finally {
-      teamSaving = false
+      confirmationLoading = false
     }
   }
 
-  async function createNewTeam(teamName: string) {
-    const shareToken = crypto.randomUUID()
+  async function confirmJoinTeam() {
+    if (!selectedTeamForJoin || joiningTeam) return
 
-    const { error: teamError } = await supabase
-      .from('teams')
-      .insert({
-        course_id: courseId,
-        team_name: teamName,
-        public_share_token: shareToken
-      })
-
-    if (teamError) throw teamError
-
-    const { error: journalistError } = await supabase
-      .from('journalists')
-      .update({ 
-        team_name: teamName, 
-        is_editor: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('course_id', courseId)
-      .eq('name', currentUserName)
-
-    if (journalistError) throw journalistError
-
-    session.set({
-      ...$session!,
-      teamName: teamName
-    })
-
-    showNotification('success', `Created team "${teamName}"`)
-    await loadTeamData(teamName)
-  }
-
-  async function joinExistingTeam(teamName: string) {
-    const { error } = await supabase
-      .from('journalists')
-      .update({ 
-        team_name: teamName,
-        is_editor: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('course_id', courseId)
-      .eq('name', currentUserName)
-
-    if (error) throw error
-
-    session.set({
-      ...$session!,
-      teamName: teamName
-    })
-
-    showNotification('success', `Joined "${teamName}"`)
-    await loadTeamData(teamName)
-  }
-
-  function selectMemberForRemoval(name: string) {
-    selectedMemberForRemoval = selectedMemberForRemoval === name ? null : name
-  }
-
-  async function confirmRemoveMember() {
-    if (!selectedMemberForRemoval) return
-
-    const memberToRemove = selectedMemberForRemoval
-    const isRemovingSelf = memberToRemove === currentUserName
-
-    if (isRemovingSelf) {
-      const editorCount = teamMembers.filter(m => m.is_editor).length
-      const memberIsEditor = teamMembers.find(m => m.name === memberToRemove)?.is_editor
-
-      if (memberIsEditor && editorCount === 1 && teamMembers.length > 1) {
-        showNotification('error', 'Teams must have at least one editor. Add another then try again.')
-        selectedMemberForRemoval = null
-        return
-      }
-    }
+    confirmationLoading = true
+    const teamNameToJoin = selectedTeamForJoin.team_name
 
     try {
       const { error } = await supabase
         .from('journalists')
-        .update({ 
-          team_name: null, 
+        .update({
+          team_name: teamNameToJoin,
+          is_editor: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('course_id', courseId)
+        .eq('name', currentUserName)
+
+      if (error) throw error
+
+      session.set({
+        ...$session!,
+        teamName: teamNameToJoin
+      })
+
+      confirmationAction = null
+      selectedTeamForJoin = null
+      showNotification('success', `Joined "${teamNameToJoin}"`)
+      await loadTeamData(teamNameToJoin)
+    } catch (error) {
+      console.error('Join team error:', error)
+      showNotification('error', 'Failed to join team. Try again.')
+    } finally {
+      confirmationLoading = false
+    }
+  }
+
+  async function confirmLeaveTeam() {
+    if (!selectedMemberForRemoval || confirmationLoading) return
+
+    confirmationLoading = true
+    const memberToRemove = selectedMemberForRemoval
+
+    try {
+      const { error } = await supabase
+        .from('journalists')
+        .update({
+          team_name: null,
           is_editor: false,
           updated_at: new Date().toISOString()
         })
@@ -401,40 +448,45 @@
           .eq('team_name', currentTeamName)
       }
 
-      if (isRemovingSelf) {
+      if (memberToRemove === currentUserName) {
         session.set({
           ...$session!,
           teamName: null
         })
         team = null
         teamMembers = []
-        teamNameInput = ''
         currentUserIsEditor = false
         teamColors.set({ primary: '5422b0', secondary: 'f0e6f7' })
+        await loadAvailableTeams()
         showNotification('info', 'You left the team')
       } else {
-        showNotification('success', `Removed ${memberToRemove}`)
         await loadTeamMembers()
+        showNotification('success', `Removed ${memberToRemove}`)
       }
-    } catch (error) {
-      console.error('Remove member error:', error)
-      showNotification('error', 'Failed to remove. Try again.')
-    } finally {
+
+      confirmationAction = null
       selectedMemberForRemoval = null
+    } catch (error) {
+      console.error('Leave team error:', error)
+      showNotification('error', 'Failed to leave team. Try again.')
+    } finally {
+      confirmationLoading = false
     }
   }
 
-  function cancelRemoveMember() {
-    selectedMemberForRemoval = null
-  }
+  async function confirmMakeEditor() {
+    if (!selectedMemberForEditor || confirmationLoading) return
 
-  async function handleToggleEditor(event: CustomEvent<{ name: string; isEditor: boolean }>) {
-    const { name, isEditor } = event.detail
+    confirmationLoading = true
+    const { name, willBeEditor } = selectedMemberForEditor
 
-    if (!isEditor) {
+    if (!willBeEditor) {
       const editorCount = teamMembers.filter(m => m.is_editor).length
       if (editorCount === 1) {
         showNotification('error', 'Teams must have at least one editor. Add another then try again.')
+        confirmationAction = null
+        selectedMemberForEditor = null
+        confirmationLoading = false
         return
       }
     }
@@ -442,17 +494,37 @@
     try {
       const { error } = await supabase
         .from('journalists')
-        .update({ is_editor: isEditor, updated_at: new Date().toISOString() })
+        .update({ is_editor: willBeEditor, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
         .eq('name', name)
 
       if (error) throw error
 
       await loadTeamMembers()
+      const action = willBeEditor ? 'promoted to editor' : 'demoted from editor'
+      showNotification('success', `${name} ${action}`)
+
+      confirmationAction = null
+      selectedMemberForEditor = null
     } catch (error) {
-      console.error('Toggle editor error:', error)
+      console.error('Make editor error:', error)
       showNotification('error', 'Failed to update. Try again.')
+    } finally {
+      confirmationLoading = false
     }
+  }
+
+  function cancelConfirmation() {
+    confirmationAction = null
+    selectedMemberForRemoval = null
+    selectedMemberForEditor = null
+    selectedTeamForJoin = null
+    confirmationLoading = false
+  }
+
+  function handleToggleEditor(event: CustomEvent<{ name: string; isEditor: boolean }>) {
+    const { name, isEditor } = event.detail
+    openMakeEditorConfirmation(name, isEditor)
   }
 
   async function handleColorSelect(event: CustomEvent<{ primary: string; secondary: string }>) {
@@ -540,6 +612,81 @@
     }
   }
 
+  async function handleTeamLockToggle(event: CustomEvent<{ locked: boolean }>) {
+    if (!team || !currentUserIsEditor) return
+
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({ team_lock: event.detail.locked, updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('team_name', currentTeamName)
+
+      if (error) throw error
+
+      team = { ...team, team_lock: event.detail.locked }
+      showNotification('success', event.detail.locked ? 'Team locked' : 'Team unlocked')
+    } catch (error) {
+      console.error('Team lock toggle error:', error)
+      showNotification('error', 'Failed to update team lock')
+    }
+  }
+
+  async function handleDeleteTeam() {
+    if (!currentTeamName || !currentUserIsEditor) return
+
+    deleteTeamConfirming = true
+
+    try {
+      // Revert all published stories in team to drafts
+      const { error: updateStoriesError } = await supabase
+        .from('stories')
+        .update({ status: 'draft', updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('team_name', currentTeamName)
+        .eq('status', 'published')
+
+      if (updateStoriesError) throw updateStoriesError
+
+      // Delete the team
+      const { error: deleteTeamError } = await supabase
+        .from('teams')
+        .delete()
+        .eq('course_id', courseId)
+        .eq('team_name', currentTeamName)
+
+      if (deleteTeamError) throw deleteTeamError
+
+      // Remove team from all members
+      const { error: updateJournalistsError } = await supabase
+        .from('journalists')
+        .update({ team_name: null, is_editor: false, updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('team_name', currentTeamName)
+
+      if (updateJournalistsError) throw updateJournalistsError
+
+      // Update session if current user was in this team
+      session.set({
+        ...$session!,
+        teamName: null
+      })
+
+      team = null
+      teamMembers = []
+      currentUserIsEditor = false
+      teamColors.set({ primary: '5422b0', secondary: 'f0e6f7' })
+      await loadAvailableTeams()
+      deleteTeamConfirming = false
+
+      showNotification('success', 'Team deleted')
+    } catch (error) {
+      console.error('Delete team error:', error)
+      showNotification('error', 'Failed to delete team. Try again.')
+      deleteTeamConfirming = false
+    }
+  }
+
   function handleLogout() {
     session.logout()
     goto('/')
@@ -599,7 +746,7 @@
         <div>
           <label for="byline-input" class="block text-sm text-[#777777] mb-2">Byline</label>
           <div class="flex items-center gap-2">
-            <div class="flex-1 relative">
+            <div class="flex-1">
               <input
                 id="byline-input"
                 type="text"
@@ -613,7 +760,7 @@
                 style={bylineEditing ? `--tw-ring-color: #${primaryColor}` : ''}
               />
             </div>
-            
+
             {#if bylineValidating}
               <div class="w-5 h-5 border-2 border-[#777777] border-t-transparent rounded-full animate-spin"></div>
             {:else if bylineEditing}
@@ -655,136 +802,136 @@
 
           <div class="flex items-center justify-between mt-1">
             <span class="text-xs text-[#999999]">{bylineName.length} / 30</span>
-            
+
             {#if bylineEditing}
               <div class="flex items-center gap-2">
                 <button
                   type="button"
                   on:click={cancelBylineEdit}
-                  class="p-1"
+                  class="px-3 py-1 rounded-full text-sm font-medium transition-all"
+                  style="color: #${primaryColor}; border: 1px solid #${primaryColor};"
                   aria-label="Cancel"
                 >
-                  <img
-                    src="/icons/icon-close-circle-fill.svg"
-                    alt=""
-                    class="w-6 h-6"
-                    style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
-                  />
+                  Cancel
                 </button>
                 <button
                   type="button"
                   on:click={saveByline}
                   disabled={!bylineValid || bylineName === originalBylineName || bylineSaving}
-                  class="px-4 py-1 rounded-full text-white text-sm font-medium transition-opacity"
+                  class="px-3 py-1 rounded-full text-white text-sm font-medium transition-opacity"
                   class:opacity-50={!bylineValid || bylineName === originalBylineName || bylineSaving}
-                  style="background-color: #{primaryColor};"
+                  style="background-color: #${primaryColor};"
                 >
-                  {bylineSaving ? 'Saving...' : 'Save'}
+                  {bylineSaving ? 'Saving...' : 'Confirm'}
                 </button>
               </div>
             {/if}
           </div>
         </div>
 
-        <!-- Team Name Section -->
-        <div>
-          <label for="team-name-input" class="block text-sm text-[#777777] mb-2">Team Name</label>
-          <div class="flex items-center gap-2">
-            <div class="flex-1 relative">
-              <input
-                id="team-name-input"
-                type="text"
-                value={teamNameInput}
-                on:input={handleTeamInput}
-                on:focus={startTeamEdit}
-                maxlength="30"
-                placeholder={currentTeamName ? '' : 'Enter team name...'}
-                disabled={!!currentTeamName && !currentUserIsEditor}
-                class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all"
-                class:ring-2={teamEditing}
-                class:ring-[#5422b0]={teamEditing}
-                class:text-[#777777]={!teamNameInput && !currentTeamName}
-                class:cursor-not-allowed={!!currentTeamName && !currentUserIsEditor}
-                style={teamEditing ? `--tw-ring-color: #${primaryColor}` : ''}
-              />
+        <!-- Create a Team Section -->
+        {#if !currentTeamName}
+          <div>
+            <label for="create-team-input" class="block text-sm text-[#777777] mb-2">Create a team</label>
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <input
+                  id="create-team-input"
+                  type="text"
+                  value={createTeamInput}
+                  on:input={handleCreateTeamInput}
+                  maxlength="30"
+                  placeholder="Enter team name..."
+                  class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all"
+                  class:ring-2={createTeamInput.length > 0}
+                  class:ring-[#5422b0]={createTeamInput.length > 0}
+                  style={createTeamInput.length > 0 ? `--tw-ring-color: #${primaryColor}` : ''}
+                />
+              </div>
+
+              {#if createTeamValidating}
+                <div class="w-5 h-5 border-2 border-[#777777] border-t-transparent rounded-full animate-spin"></div>
+              {:else if createTeamValid === true}
+                <img
+                  src="/icons/icon-check.svg"
+                  alt="Available"
+                  class="w-5 h-5"
+                  style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                />
+              {:else if createTeamValid === false}
+                <img
+                  src="/icons/icon-close-circle-fill.svg"
+                  alt="Not available"
+                  class="w-5 h-5"
+                  style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                />
+              {:else}
+                <img
+                  src="/icons/icon-circle.svg"
+                  alt=""
+                  class="w-5 h-5"
+                  style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+                />
+              {/if}
             </div>
 
-            {#if teamValidating}
-              <div class="w-5 h-5 border-2 border-[#777777] border-t-transparent rounded-full animate-spin"></div>
-            {:else if currentTeamName && !teamEditing}
-              <img
-                src="/icons/icon-check.svg"
-                alt="In team"
-                class="w-5 h-5"
-                style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
-              />
-            {:else if teamEditing && teamValid}
-              <img
-                src="/icons/icon-check.svg"
-                alt="Valid"
-                class="w-5 h-5"
-                style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
-              />
-            {:else if teamEditing && teamValid === false}
-              <img
-                src="/icons/icon-close-circle-fill.svg"
-                alt="Invalid"
-                class="w-5 h-5"
-                style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
-              />
-            {:else}
-              <img
-                src="/icons/icon-circle.svg"
-                alt=""
-                class="w-5 h-5"
-                style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-              />
+            {#if createTeamError}
+              <p class="text-sm text-[#777777] mt-1">{createTeamError}</p>
             {/if}
-          </div>
 
-          {#if teamError}
-            <p class="text-sm text-[#777777] mt-1">{teamError}</p>
-          {/if}
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-[#999999]">{createTeamInput.length} / 30</span>
 
-          <div class="flex items-center justify-between mt-1">
-            <span class="text-xs text-[#999999]">{teamNameInput.length} / 30</span>
-            
-            {#if teamEditing && !currentTeamName}
-              <div class="flex items-center gap-2">
+              {#if createTeamValid === true}
                 <button
                   type="button"
-                  on:click={cancelTeamEdit}
-                  class="p-1"
-                  aria-label="Cancel"
+                  on:click={openCreateTeamConfirmation}
+                  class="px-3 py-1 rounded-full text-white text-sm font-medium transition-all"
+                  style="background-color: #${primaryColor};"
                 >
+                  Create
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Join a Team Section -->
+        {#if !currentTeamName && availableTeams.length > 0}
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm text-[#777777]">Join a team</label>
+              <span class="text-xs text-[#999999]">Tap to join</span>
+            </div>
+
+            <div class="space-y-2 border-t border-[#efefef]">
+              {#each availableTeams as availTeam (availTeam.id)}
+                <button
+                  type="button"
+                  on:click={() => openJoinTeamConfirmation(availTeam)}
+                  class="w-full flex items-center justify-between py-3 px-2 text-left hover:bg-[#f5f5f5] transition-colors rounded"
+                >
+                  <span class="text-base text-[#333333]">{availTeam.team_name}</span>
                   <img
-                    src="/icons/icon-close-circle-fill.svg"
+                    src="/icons/icon-circle.svg"
                     alt=""
-                    class="w-6 h-6"
-                    style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                    class="w-5 h-5"
+                    style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
                   />
                 </button>
-                <button
-                  type="button"
-                  on:click={saveTeamName}
-                  disabled={teamValid !== true || !teamNameInput.trim() || teamSaving}
-                  class="px-4 py-1 rounded-full text-white text-sm font-medium transition-opacity"
-                  class:opacity-50={teamValid !== true || !teamNameInput.trim() || teamSaving}
-                  style="background-color: #{primaryColor};"
-                >
-                  {teamSaving ? 'Saving...' : teamExists ? 'Join' : 'Save'}
-                </button>
-              </div>
-            {/if}
+              {/each}
+            </div>
           </div>
-        </div>
+        {/if}
 
-        <!-- Team Members Section -->
+        <!-- Team Members Section (Only if in a team) -->
         {#if currentTeamName}
           <div>
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm text-[#777777]">Team members</span>
-              <span class="text-sm text-[#777777]">Editor</span>
+              {#if currentUserIsEditor}
+                <span class="text-sm text-[#777777]">Editor</span>
+              {/if}
             </div>
 
             {#if teamMembers.length > 0}
@@ -796,89 +943,84 @@
                     isCurrentUser={member.name === currentUserName}
                     canRemove={currentUserIsEditor || member.name === currentUserName}
                     canToggleEditor={currentUserIsEditor}
-                    isSelected={selectedMemberForRemoval === member.name}
                     {primaryColor}
-                    on:remove={() => selectMemberForRemoval(member.name)}
+                    on:remove={() => openLeaveTeamConfirmation(member.name)}
                     on:toggleEditor={handleToggleEditor}
                   />
                 {/each}
               </div>
-
-              <!-- Remove confirmation toolbar -->
-              {#if selectedMemberForRemoval}
-                <div 
-                  class="flex items-center justify-center gap-3 mt-3 py-2 px-4 rounded-full text-white"
-                  style="background-color: #{primaryColor};"
-                >
-                  <button
-                    type="button"
-                    on:click={cancelRemoveMember}
-                    class="w-6 h-6 rounded-full border border-white flex items-center justify-center"
-                    aria-label="Cancel"
-                  >
-                    <img
-                      src="/icons/icon-close.svg"
-                      alt=""
-                      class="w-3 h-3"
-                      style="filter: invert(100%);"
-                    />
-                  </button>
-                  <span class="text-sm font-medium">
-                    {selectedMemberForRemoval === currentUserName ? 'Leave the team?' : 'Remove from team?'}
-                  </span>
-                  <button
-                    type="button"
-                    on:click={confirmRemoveMember}
-                    class="w-6 h-6 rounded-full border border-white flex items-center justify-center"
-                    aria-label="Confirm"
-                  >
-                    <img
-                      src="/icons/icon-check.svg"
-                      alt=""
-                      class="w-3 h-3"
-                      style="filter: invert(100%);"
-                    />
-                  </button>
-                </div>
-              {/if}
             {:else}
               <p class="text-[#999999] text-sm py-3">Team members will appear here</p>
             {/if}
+
+            <!-- Explanation text below members list -->
+            {#if teamMembers.length > 0}
+              <p class="text-xs text-[#999999] mt-3">
+                To leave the team, tap X. When you leave all published stories will revert to drafts
+              </p>
+            {/if}
           </div>
 
-          <!-- Color Palette -->
-          <ColorPalette
-            selectedColor={team?.primary_color || '5422b0'}
-            disabled={!currentUserIsEditor}
-            on:select={handleColorSelect}
-          />
+          <!-- Editor-only controls -->
+          {#if currentUserIsEditor}
+            <div class="border-t border-[#efefef] pt-6">
+              <h3 class="text-sm text-[#777777] font-medium mb-4">Editor-only controls below</h3>
 
-          <!-- Logo Upload -->
-          <TeamLogoUpload
-            logoUrl={team?.logo_url || null}
-            disabled={!currentUserIsEditor}
-            {primaryColor}
-            on:upload={handleLogoUpload}
-            on:remove={handleLogoRemove}
-          />
+              <!-- Color Palette -->
+              <ColorPalette
+                selectedColor={team?.primary_color || '5422b0'}
+                disabled={false}
+                on:select={handleColorSelect}
+              />
 
-          <!-- Share Toggle -->
-          <ShareToggle
-            enabled={team?.share_enabled || false}
-            teamName={currentTeamName}
-            disabled={!currentUserIsEditor}
-            {primaryColor}
-            on:toggle={handleShareToggle}
-          />
-        {:else}
-          <div>
-            <span class="text-sm text-[#777777]">Team members</span>
-            <p class="text-[#999999] text-sm mt-2">Team members will appear here</p>
-          </div>
+              <!-- Logo Upload -->
+              <TeamLogoUpload
+                logoUrl={team?.logo_url || null}
+                disabled={false}
+                {primaryColor}
+                on:upload={handleLogoUpload}
+                on:remove={handleLogoRemove}
+              />
+
+              <!-- Share Toggle -->
+              <ShareToggle
+                enabled={team?.share_enabled || false}
+                teamName={currentTeamName}
+                disabled={false}
+                {primaryColor}
+                on:toggle={handleShareToggle}
+              />
+
+              <!-- Team Lock Toggle -->
+              <TeamLockToggle
+                locked={team?.team_lock || false}
+                disabled={false}
+                {primaryColor}
+                on:toggle={handleTeamLockToggle}
+              />
+
+              <!-- Danger Zone -->
+              <div class="mt-6 border-t border-[#efefef] pt-4">
+                <h3 class="text-sm text-red-600 font-medium mb-3">Danger zone</h3>
+                <button
+                  type="button"
+                  on:click={() => (deleteTeamConfirming = true)}
+                  disabled={deleteTeamConfirming}
+                  class="w-full py-2 px-4 rounded-full text-white text-sm font-medium transition-opacity bg-red-600 hover:bg-red-700"
+                  class:opacity-50={deleteTeamConfirming}
+                >
+                  {deleteTeamConfirming ? 'Deleting...' : 'Delete the team'}
+                </button>
+                <p class="text-xs text-[#999999] mt-2">
+                  If you delete the team published stories will revert to author drafts
+                </p>
+              </div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Logout Button -->
-        <div class="mt-6">
+        <div class="mt-6 border-t border-[#efefef] pt-6">
           <button
             type="button"
             on:click={handleLogout}
@@ -886,6 +1028,133 @@
           >
             Log out
           </button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Confirmation Modals -->
+    {#if confirmationAction === 'create-team'}
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+          <h2 class="text-lg font-semibold text-[#333333] mb-2">Create team</h2>
+          <p class="text-sm text-[#666666] mb-6">Create "{createTeamInput}"?</p>
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              on:click={cancelConfirmation}
+              disabled={confirmationLoading}
+              class="flex-1 px-4 py-2 rounded-full border border-[#{primaryColor}] text-[#{primaryColor}] text-sm font-medium transition-all hover:bg-[#{primaryColor}] hover:bg-opacity-10"
+              style="border-color: #${primaryColor}; color: #${primaryColor};"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              on:click={confirmCreateTeam}
+              disabled={confirmationLoading}
+              class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all"
+              style="background-color: #${primaryColor};"
+            >
+              {confirmationLoading ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {#if confirmationAction === 'join-team'}
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+          {#if teamLocked}
+            <h2 class="text-lg font-semibold text-[#333333] mb-2">Team locked</h2>
+            <p class="text-sm text-[#666666] mb-6">Sorry, this team is locked by an editor</p>
+            <button
+              type="button"
+              on:click={cancelConfirmation}
+              class="w-full px-4 py-2 rounded-full text-white text-sm font-medium"
+              style="background-color: #${primaryColor};"
+            >
+              OK
+            </button>
+          {:else}
+            <h2 class="text-lg font-semibold text-[#333333] mb-2">Join team</h2>
+            <p class="text-sm text-[#666666] mb-6">Join "{selectedTeamForJoin?.team_name}"?</p>
+
+            <div class="flex gap-3">
+              <button
+                type="button"
+                on:click={cancelConfirmation}
+                disabled={confirmationLoading}
+                class="flex-1 px-4 py-2 rounded-full border border-[#{primaryColor}] text-[#{primaryColor}] text-sm font-medium transition-all hover:bg-[#{primaryColor}] hover:bg-opacity-10"
+                style="border-color: #${primaryColor}; color: #${primaryColor};"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                on:click={confirmJoinTeam}
+                disabled={confirmationLoading}
+                class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all"
+                style="background-color: #${primaryColor};"
+              >
+                {confirmationLoading ? 'Joining...' : 'Join'}
+              </button>
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    {#if confirmationAction === 'leave-team'}
+      <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#efefef] p-4">
+        <ConfirmationToolbar
+          message={selectedMemberForRemoval === currentUserName ? 'Leave the team?' : 'Remove from team?'}
+          {primaryColor}
+          isLoading={confirmationLoading}
+          on:cancel={cancelConfirmation}
+          on:confirm={confirmLeaveTeam}
+        />
+      </div>
+    {/if}
+
+    {#if confirmationAction === 'make-editor' && selectedMemberForEditor}
+      <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#efefef] p-4">
+        <ConfirmationToolbar
+          message={selectedMemberForEditor.willBeEditor ? `${selectedMemberForEditor.name} is now an editor` : `Remove ${selectedMemberForEditor.name} as editor?`}
+          {primaryColor}
+          isLoading={confirmationLoading}
+          on:cancel={cancelConfirmation}
+          on:confirm={confirmMakeEditor}
+        />
+      </div>
+    {/if}
+
+    <!-- Delete Team Confirmation Modal -->
+    {#if deleteTeamConfirming}
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+          <h2 class="text-lg font-semibold text-[#333333] mb-2">Delete the team</h2>
+          <p class="text-sm text-[#666666] mb-6">Are you sure? This cannot be undone. Published stories will revert to drafts.</p>
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              on:click={() => (deleteTeamConfirming = false)}
+              disabled={deleteTeamConfirming}
+              class="flex-1 px-4 py-2 rounded-full text-[#333333] text-sm font-medium transition-all border border-[#ddd]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              on:click={handleDeleteTeam}
+              disabled={deleteTeamConfirming}
+              class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all bg-red-600 hover:bg-red-700"
+            >
+              Delete team
+            </button>
+          </div>
         </div>
       </div>
     {/if}

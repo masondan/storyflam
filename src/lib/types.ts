@@ -38,6 +38,7 @@ export interface Team {
   logo_url: string | null
   public_share_token: string | null
   share_enabled: boolean
+  team_lock?: boolean
   created_at: string
   updated_at: string
 }

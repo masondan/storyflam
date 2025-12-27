@@ -6,7 +6,6 @@
   export let isCurrentUser: boolean = false
   export let canRemove: boolean = false
   export let canToggleEditor: boolean = false
-  export let isSelected: boolean = false
   export let primaryColor: string = '5422b0'
 
   const dispatch = createEventDispatcher<{
@@ -24,10 +23,7 @@
   }
 </script>
 
-<div 
-  class="flex items-center py-3 border-b border-[#efefef] last:border-b-0"
-  class:bg-[#f0e6f7]={isSelected}
->
+<div class="flex items-center py-3 border-b border-[#efefef] last:border-b-0">
   {#if canRemove}
     <button
       type="button"
@@ -39,20 +35,14 @@
         src="/icons/icon-close.svg"
         alt=""
         class="w-4 h-4"
-        style="filter: {isSelected 
-          ? `invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%)`
-          : `invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%)`};"
+        style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
       />
     </button>
   {:else}
     <div class="w-4 mr-3"></div>
   {/if}
 
-  <span 
-    class="flex-1 text-base"
-    class:text-[#5422b0]={isSelected}
-    style={isSelected ? `color: #${primaryColor}` : ''}
-  >
+  <span class="flex-1 text-base text-[#333333]">
     {name}{isCurrentUser ? ' (you)' : ''}
   </span>
 
