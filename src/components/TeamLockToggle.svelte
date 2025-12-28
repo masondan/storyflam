@@ -14,7 +14,7 @@
 </script>
 
 <div class="space-y-3">
-  <div class="flex items-center justify-between pb-1 border-b border-[#efefef]">
+  <div class="flex items-center justify-between pb-1 border-b border-[#e0e0e0]">
     <span class="text-sm text-[#777777]">Team lock</span>
 
     <button
@@ -36,7 +36,5 @@
     </button>
   </div>
 
-  {#if locked}
-    <p class="text-xs text-[#999999]">Journalists cannot join this team. Only editors can add members.</p>
-  {/if}
+  <p class="text-xs text-[#999999]">This prevents others from joining your group.</p>
 </div>

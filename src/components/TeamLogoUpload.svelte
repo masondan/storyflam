@@ -70,9 +70,9 @@
   }
 </script>
 
-<div class="space-y-2">
-  <div class="flex items-baseline justify-between pb-1 border-b border-[#efefef]">
-    <span class="text-sm text-[#777777]">Upload a team logo (square)<span class="text-[#777777]">*</span></span>
+<div class="space-y-3">
+  <div class="flex items-baseline justify-between pb-1 border-b border-[#e0e0e0]">
+    <span class="text-sm text-[#777777]">Upload a team logo (square)</span>
   </div>
 
   <input

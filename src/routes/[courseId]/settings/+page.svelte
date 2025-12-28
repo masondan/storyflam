@@ -57,10 +57,23 @@
   let journalistsSubscription: ReturnType<typeof supabase.channel> | null = null
   let teamsSubscription: ReturnType<typeof supabase.channel> | null = null
 
+  // Inline leave confirmation state
+  let leavingMemberName: string | null = null
+  let isLeaving = false
+
+  // Inline editor toggle confirmation state
+  let editorToggleMember: { name: string; willBeEditor: boolean } | null = null
+  let isTogglingEditor = false
+
+  // Advisory modals for last editor/member edge cases
+  let showLastEditorAdvisory = false
+  let showLastMemberAdvisory = false
+
   $: courseId = $session?.courseId || ''
   $: currentUserName = $session?.name || ''
   $: currentTeamName = $session?.teamName || null
   $: primaryColor = team?.primary_color || '5422b0'
+  $: secondaryColor = team?.secondary_color || 'f0e6f7'
   $: showTeamsTab = $isTrainer || $isGuestEditor
   $: showAdminTab = $isTrainer
 
@@ -68,10 +81,10 @@
     bylineName = $session?.name || ''
     originalBylineName = bylineName
 
+    await loadAvailableTeams()
+    
     if ($session?.teamName) {
       await loadTeamData()
-    } else {
-      await loadAvailableTeams()
     }
 
     setupRealtimeSubscription()
@@ -116,9 +129,7 @@
           filter: `course_id=eq.${courseId}`
         },
         () => {
-          if (!currentTeamName) {
-            loadAvailableTeams()
-          }
+          loadAvailableTeams()
         }
       )
       .subscribe()
@@ -334,6 +345,55 @@
     }
   }
 
+  async function createTeamDirectly() {
+    if (!createTeamValid || createTeamSaving || !createTeamInput.trim()) return
+
+    createTeamSaving = true
+    const trimmedName = createTeamInput.trim()
+
+    try {
+      const shareToken = crypto.randomUUID()
+
+      const { error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          course_id: courseId,
+          team_name: trimmedName,
+          public_share_token: shareToken
+        })
+
+      if (teamError) throw teamError
+
+      const { error: journalistError } = await supabase
+        .from('journalists')
+        .update({
+          team_name: trimmedName,
+          is_editor: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('course_id', courseId)
+        .eq('name', currentUserName)
+
+      if (journalistError) throw journalistError
+
+      session.set({
+        ...$session!,
+        teamName: trimmedName
+      })
+
+      createTeamInput = ''
+      createTeamValid = null
+      createTeamEditing = false
+      showNotification('success', 'Team created')
+      await loadTeamData(trimmedName)
+    } catch (error) {
+      console.error('Create team error:', error)
+      showNotification('error', 'Failed to create team. Try again.')
+    } finally {
+      createTeamSaving = false
+    }
+  }
+
   function openJoinTeamConfirmation(team: Team) {
     selectedTeamForJoin = team
     teamLocked = team.team_lock ?? false
@@ -472,7 +532,7 @@
         currentUserIsEditor = false
         teamColors.set({ primary: '5422b0', secondary: 'f0e6f7' })
         await loadAvailableTeams()
-        showNotification('info', 'You left the team')
+        showNotification('info', 'You left the team. Join or create another.')
       } else {
         await loadTeamMembers()
         showNotification('success', `Removed ${memberToRemove}`)
@@ -485,6 +545,65 @@
       showNotification('error', 'Failed to leave team. Try again.')
     } finally {
       confirmationLoading = false
+    }
+  }
+
+  function handleStartLeave(event: CustomEvent<{ name: string }>) {
+    // If this is the last member in the team, show advisory modal instead
+    if (teamMembers.length === 1 && event.detail.name === currentUserName) {
+      showLastMemberAdvisory = true
+      return
+    }
+    leavingMemberName = event.detail.name
+  }
+
+  function handleCancelLeave() {
+    leavingMemberName = null
+  }
+
+  async function handleConfirmLeave(event: CustomEvent<{ name: string }>) {
+    if (isLeaving) return
+    
+    isLeaving = true
+    const memberName = event.detail.name
+
+    try {
+      const { error } = await supabase
+        .from('journalists')
+        .update({
+          team_name: null,
+          is_editor: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('course_id', courseId)
+        .eq('name', memberName)
+
+      if (error) throw error
+
+      if (teamMembers.length === 1) {
+        await supabase
+          .from('teams')
+          .delete()
+          .eq('course_id', courseId)
+          .eq('team_name', currentTeamName)
+      }
+
+      session.set({
+        ...$session!,
+        teamName: null
+      })
+      team = null
+      teamMembers = []
+      currentUserIsEditor = false
+      teamColors.set({ primary: '5422b0', secondary: 'f0e6f7' })
+      await loadAvailableTeams()
+      showNotification('info', 'You left the team. Join or create another.')
+      leavingMemberName = null
+    } catch (error) {
+      console.error('Leave team error:', error)
+      showNotification('error', 'Failed to leave team. Try again.')
+    } finally {
+      isLeaving = false
     }
   }
 
@@ -536,9 +655,59 @@
     confirmationLoading = false
   }
 
-  function handleToggleEditor(event: CustomEvent<{ name: string; isEditor: boolean }>) {
-    const { name, isEditor } = event.detail
-    openMakeEditorConfirmation(name, isEditor)
+  function handleStartEditorToggle(event: CustomEvent<{ name: string; willBeEditor: boolean }>) {
+    const { name, willBeEditor } = event.detail
+    
+    // If trying to remove editor status and this is the only editor, show advisory modal
+    if (!willBeEditor) {
+      const editorCount = teamMembers.filter(m => m.is_editor).length
+      if (editorCount === 1) {
+        showLastEditorAdvisory = true
+        return
+      }
+    }
+    
+    editorToggleMember = event.detail
+  }
+
+  function handleCancelEditorToggle() {
+    editorToggleMember = null
+  }
+
+  async function handleConfirmEditorToggle(event: CustomEvent<{ name: string; willBeEditor: boolean }>) {
+    if (isTogglingEditor) return
+    
+    const { name, willBeEditor } = event.detail
+
+    if (!willBeEditor) {
+      const editorCount = teamMembers.filter(m => m.is_editor).length
+      if (editorCount === 1) {
+        showNotification('error', 'Teams must have at least one editor. Add another then try again.')
+        editorToggleMember = null
+        return
+      }
+    }
+
+    isTogglingEditor = true
+
+    try {
+      const { error } = await supabase
+        .from('journalists')
+        .update({ is_editor: willBeEditor, updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('name', name)
+
+      if (error) throw error
+
+      await loadTeamMembers()
+      showNotification('success', willBeEditor ? 'Editor added.' : 'Editor removed.')
+      editorToggleMember = null
+    } catch (error) {
+      console.error('Editor toggle error:', error)
+      showNotification('error', 'Failed to update. Try again.')
+    } finally {
+      isTogglingEditor = false
+    }
   }
 
   async function handleColorSelect(event: CustomEvent<{ primary: string; secondary: string }>) {
@@ -863,8 +1032,7 @@
         </div>
 
         <!-- Team Name Section -->
-        {#if !currentTeamName}
-          <div>
+        <div>
             <div class="flex items-start gap-2">
               <!-- Left column: label, input, helper text -->
               <div class="flex-1">
@@ -950,7 +1118,7 @@
                 >
                   <button
                     type="button"
-                    on:click={openCreateTeamConfirmation}
+                    on:click={createTeamDirectly}
                     disabled={createTeamValid !== true || createTeamInput.trim().length === 0 || createTeamSaving}
                     class="transition-opacity"
                     class:opacity-50={createTeamValid !== true || createTeamInput.trim().length === 0 || createTeamSaving}
@@ -969,11 +1137,9 @@
               </div>
             {/if}
           </div>
-        {/if}
 
         <!-- Teams Section -->
-        {#if !currentTeamName}
-          <div>
+        <div>
             <div class="flex items-center justify-between">
               <span class="text-sm text-[#777777]">Teams</span>
               {#if availableTeams.length > 0}
@@ -987,16 +1153,27 @@
                 {#each availableTeams as availTeam (availTeam.id)}
                   <button
                     type="button"
-                    on:click={() => openJoinTeamConfirmation(availTeam)}
-                    class="w-full flex items-center justify-between py-3 text-left hover:bg-[#f5f5f5] transition-colors border-b border-[#e0e0e0]"
+                    on:click={() => availTeam.team_name !== currentTeamName && openJoinTeamConfirmation(availTeam)}
+                    class="w-full flex items-center justify-between py-3 text-left transition-colors border-b border-[#e0e0e0]"
+                    class:hover:bg-[#f5f5f5]={availTeam.team_name !== currentTeamName}
+                    class:cursor-default={availTeam.team_name === currentTeamName}
                   >
                     <span class="text-base text-[#333333]">{availTeam.team_name}</span>
-                    <img
-                      src="/icons/icon-circle.svg"
-                      alt=""
-                      class="w-5 h-5"
-                      style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-                    />
+                    {#if availTeam.team_name === currentTeamName}
+                      <img
+                        src="/icons/icon-check-fill.svg"
+                        alt="Current team"
+                        class="w-5 h-5"
+                        style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                      />
+                    {:else}
+                      <img
+                        src="/icons/icon-circle.svg"
+                        alt=""
+                        class="w-5 h-5"
+                        style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+                      />
+                    {/if}
                   </button>
                 {/each}
               </div>
@@ -1005,17 +1182,8 @@
             {/if}
           </div>
 
-          <!-- Team members Placeholder Section -->
-          <div>
-            <span class="text-sm text-[#777777]">Team members</span>
-            <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
-            <p class="text-center text-[#999999] text-sm py-6">Team members appear here</p>
-          </div>
-        {/if}
-
-        <!-- Team members Section (Only if in a team) -->
-        {#if currentTeamName}
-          <div>
+        <!-- Team members Section -->
+        <div>
             <div class="flex items-center justify-between">
               <span class="text-sm text-[#777777]">Team members</span>
               {#if currentUserIsEditor}
@@ -1034,8 +1202,18 @@
                     canRemove={currentUserIsEditor || member.name === currentUserName}
                     canToggleEditor={currentUserIsEditor}
                     {primaryColor}
+                    {secondaryColor}
+                    isConfirmingLeave={leavingMemberName === member.name && member.name === currentUserName}
+                    {isLeaving}
+                    isConfirmingEditorToggle={editorToggleMember?.name === member.name}
+                    {isTogglingEditor}
                     on:remove={() => openLeaveTeamConfirmation(member.name)}
-                    on:toggleEditor={handleToggleEditor}
+                    on:startLeave={handleStartLeave}
+                    on:confirmLeave={handleConfirmLeave}
+                    on:cancelLeave={handleCancelLeave}
+                    on:startEditorToggle={handleStartEditorToggle}
+                    on:confirmEditorToggle={handleConfirmEditorToggle}
+                    on:cancelEditorToggle={handleCancelEditorToggle}
                   />
                 {/each}
               </div>
@@ -1046,17 +1224,14 @@
             <!-- Explanation text below members list -->
             {#if teamMembers.length > 0}
               <p class="text-xs text-[#999999] mt-3">
-                Teams must have at least one editor.<br/>
-                To leave the team, tap X. When you leave all published stories will revert to drafts
+                Teams must have at least one editor. To leave the team, tap X. When you leave, all published stories will revert to drafts.
               </p>
             {/if}
           </div>
 
           <!-- Editor-only controls -->
           {#if currentUserIsEditor}
-            <div class="border-t border-[#efefef] pt-6">
-              <h3 class="text-sm text-[#777777] font-medium mb-4">Editor-only controls below</h3>
-
+            <div class="space-y-6">
               <!-- Color Palette -->
               <ColorPalette
                 selectedColor={team?.primary_color || '5422b0'}
@@ -1089,71 +1264,45 @@
                 {primaryColor}
                 on:toggle={handleTeamLockToggle}
               />
-
-              <!-- Danger Zone -->
-              <div class="mt-6 border-t border-[#efefef] pt-4">
-                <h3 class="text-sm text-red-600 font-medium mb-3">Danger zone</h3>
-                <button
-                  type="button"
-                  on:click={() => (deleteTeamConfirming = true)}
-                  disabled={deleteTeamConfirming}
-                  class="w-full py-2 px-4 rounded-full text-white text-sm font-medium transition-opacity bg-red-600 hover:bg-red-700"
-                  class:opacity-50={deleteTeamConfirming}
-                >
-                  {deleteTeamConfirming ? 'Deleting...' : 'Delete the team'}
-                </button>
-                <p class="text-xs text-[#999999] mt-2">
-                  If you delete the team published stories will revert to author drafts
-                </p>
-              </div>
             </div>
           {/if}
-        {/if}
 
         <!-- Logout Button -->
-        <div class="mt-6 border-t border-[#efefef] pt-6">
+        <div class="mt-6">
           <button
             type="button"
             on:click={handleLogout}
-            class="w-full py-3 text-[#777777] text-sm font-medium"
+            class="w-full py-3 text-[#333333] text-sm font-medium"
           >
             Log out
           </button>
         </div>
+
+        <!-- Danger Zone (only for editors, at very bottom) -->
+        {#if currentUserIsEditor}
+          <div class="mt-6">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-red-600">Danger zone</span>
+            </div>
+            <div class="w-full border-b border-[#e0e0e0] mt-2 mb-4"></div>
+            <button
+              type="button"
+              on:click={() => (deleteTeamConfirming = true)}
+              disabled={deleteTeamConfirming}
+              class="w-full py-2 px-4 rounded-full text-white text-sm font-medium transition-opacity bg-red-600 hover:bg-red-700"
+              class:opacity-50={deleteTeamConfirming}
+            >
+              {deleteTeamConfirming ? 'Deleting...' : 'Delete the team'}
+            </button>
+            <p class="text-xs text-[#999999] mt-2">
+              If you delete the team published stories will revert to author drafts
+            </p>
+          </div>
+        {/if}
       </div>
     {/if}
 
     <!-- Confirmation Modals -->
-    {#if confirmationAction === 'create-team'}
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
-          <h2 class="text-lg font-semibold text-[#333333] mb-2">Create team</h2>
-          <p class="text-sm text-[#666666] mb-6">Create "{createTeamInput}"?</p>
-
-          <div class="flex gap-3">
-            <button
-              type="button"
-              on:click={cancelConfirmation}
-              disabled={confirmationLoading}
-              class="flex-1 px-4 py-2 rounded-full border border-[#{primaryColor}] text-[#{primaryColor}] text-sm font-medium transition-all hover:bg-[#{primaryColor}] hover:bg-opacity-10"
-              style="border-color: #${primaryColor}; color: #${primaryColor};"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              on:click={confirmCreateTeam}
-              disabled={confirmationLoading}
-              class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all"
-              style="background-color: #${primaryColor};"
-            >
-              {confirmationLoading ? 'Creating...' : 'Create'}
-            </button>
-          </div>
-        </div>
-      </div>
-    {/if}
-
     {#if confirmationAction === 'join-team'}
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
@@ -1209,15 +1358,43 @@
       </div>
     {/if}
 
-    {#if confirmationAction === 'make-editor' && selectedMemberForEditor}
-      <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#efefef] p-4">
-        <ConfirmationToolbar
-          message={selectedMemberForEditor.willBeEditor ? `${selectedMemberForEditor.name} is now an editor` : `Remove ${selectedMemberForEditor.name} as editor?`}
-          {primaryColor}
-          isLoading={confirmationLoading}
-          on:cancel={cancelConfirmation}
-          on:confirm={confirmMakeEditor}
-        />
+
+
+    <!-- Last Editor Advisory Modal -->
+    {#if showLastEditorAdvisory}
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+          <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Add another then try again.</p>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              on:click={() => (showLastEditorAdvisory = false)}
+              class="text-sm font-medium"
+              style="color: #{primaryColor};"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Last Member Advisory Modal -->
+    {#if showLastMemberAdvisory}
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+          <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Delete the team, then join another.</p>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              on:click={() => (showLastMemberAdvisory = false)}
+              class="text-sm font-medium"
+              style="color: #{primaryColor};"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       </div>
     {/if}
 
@@ -1226,13 +1403,12 @@
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
           <h2 class="text-lg font-semibold text-[#333333] mb-2">Delete the team</h2>
-          <p class="text-sm text-[#666666] mb-6">Are you sure? This cannot be undone. Published stories will revert to drafts.</p>
+          <p class="text-sm text-[#666666] mb-6">Are you sure? This cannot be undone.</p>
 
           <div class="flex gap-3">
             <button
               type="button"
               on:click={() => (deleteTeamConfirming = false)}
-              disabled={deleteTeamConfirming}
               class="flex-1 px-4 py-2 rounded-full text-[#333333] text-sm font-medium transition-all border border-[#ddd]"
             >
               Cancel
@@ -1240,7 +1416,6 @@
             <button
               type="button"
               on:click={handleDeleteTeam}
-              disabled={deleteTeamConfirming}
               class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all bg-red-600 hover:bg-red-700"
             >
               Delete team
