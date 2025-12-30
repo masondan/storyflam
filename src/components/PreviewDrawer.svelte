@@ -12,12 +12,22 @@
   export let teamName: string | null = null
   export let teamLogoUrl: string | null = null
 
+  let scrollY = 0
+  let headerOpacity = 1
+
   $: displayTeamName = teamName || $session?.teamName || 'Team NewsLab'
   $: authorName = $session?.name || 'Journalist'
   $: console.log('=== PREVIEW DRAWER RECEIVED ===', { title, contentBlocks, showEmpty: !title && contentBlocks.length === 0 })
 
   function closeDrawer() {
     previewDrawerOpen.set(false)
+  }
+
+  function handleScroll(e: Event) {
+    const main = e.target as HTMLElement
+    scrollY = main.scrollTop
+    // Reduce opacity as user scrolls down, min opacity at 100px
+    headerOpacity = Math.max(0.3, 1 - scrollY / 100)
   }
 
   function extractYouTubeId(url: string): string {
@@ -30,50 +40,32 @@
   class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-[55] bg-white flex flex-col h-svh"
   transition:fly={{ x: '100%', duration: 300 }}
 >
-    <!-- Team Header -->
-    <header
-      class="py-6 px-4 text-center"
-      style="background-color: #{$teamColors.secondary};"
+    <!-- Slim Header -->
+    <header 
+      class="sticky top-0 z-40 px-4 py-3 flex items-center justify-center transition-opacity duration-300"
+      style="background-color: #{$teamColors.secondary}; opacity: {headerOpacity};"
     >
+      <!-- Close button -->
       <button
         on:click={closeDrawer}
-        class="absolute top-4 left-4 w-8 h-8 rounded-full bg-[#efefef] flex items-center justify-center"
-        aria-label="Back"
+        class="absolute left-4 w-8 h-8 rounded-full bg-[#efefef] flex items-center justify-center"
+        aria-label="Close"
       >
         <img
-          src="/icons/icon-arrow-right.svg"
+          src="/icons/icon-close.svg"
           alt=""
           class="w-4 h-4"
           style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
         />
       </button>
-
-      <!-- Team Logo -->
-      <div class="flex justify-center mb-3">
-        <img
-          src={teamLogoUrl || '/icons/logo-teamstream-fallback.png'}
-          alt="Team logo"
-          class="w-16 h-16 rounded-lg object-cover"
-        />
-      </div>
-
-      <!-- Team Name -->
-      <h1
-        class="text-lg font-bold"
-        style="color: #{$teamColors.primary};"
-      >
+      
+      <h1 class="text-sm font-semibold" style="color: #{$teamColors.primary};">
         {displayTeamName}
       </h1>
     </header>
 
-    <!-- Color Bar -->
-    <div
-      class="h-1"
-      style="background-color: #{$teamColors.primary};"
-    ></div>
-
     <!-- Content -->
-    <main class="flex-1 overflow-y-auto px-4 py-6">
+    <main class="flex-1 overflow-y-auto px-4 py-6" on:scroll={handleScroll}>
       <!-- Author -->
       <p class="text-sm text-[#777777] mb-2">By {authorName}</p>
 

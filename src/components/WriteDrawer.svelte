@@ -1078,28 +1078,28 @@
       </div>
     </header>
 
-    <!-- Title Input (Sticky, stays above keyboard) -->
-    <div class="sticky top-0 bg-white z-40 px-4 py-4 pt-5 shrink-0">
-      <textarea
-        bind:value={title}
-        on:input={scheduleAutoSave}
-        placeholder="Title"
-        class="title-input w-full text-2xl font-semibold text-[#333333] outline-none placeholder:text-[#999999] resize-none overflow-hidden"
-        rows="1"
-        maxlength="200"
-        on:input={(e) => {
-          const target = e.currentTarget;
-          target.style.height = 'auto';
-          target.style.height = target.scrollHeight + 'px';
-        }}
-      ></textarea>
-    </div>
-
     <!-- Content -->
     <main 
       class="flex-1 px-4 overflow-y-auto pb-4"
       style={isKeyboardVisible ? `padding-bottom: 80px;` : ''}
     >
+      <!-- Title Input (Scrolls with content) -->
+      <div class="bg-white -mx-4 px-4 py-4 pt-5">
+        <textarea
+          bind:value={title}
+          on:input={scheduleAutoSave}
+          placeholder="Title"
+          class="title-input w-full text-2xl font-semibold text-[#333333] outline-none placeholder:text-[#999999] resize-none overflow-hidden"
+          rows="1"
+          maxlength="200"
+          on:input={(e) => {
+            const target = e.currentTarget;
+            target.style.height = 'auto';
+            target.style.height = target.scrollHeight + 'px';
+          }}
+        ></textarea>
+      </div>
+
       <div class="pt-0">
         <!-- Featured Image -->
         {#if featuredImageUrl}

@@ -77,8 +77,8 @@
   >
     <!-- Slim Header -->
     <header 
-      class="sticky top-0 z-40 px-4 py-3 flex items-center justify-center border-b transition-opacity duration-300"
-      style="background-color: #{secondaryColor}; border-color: #{primaryColor}; border-width: 1px; opacity: {headerOpacity};"
+      class="sticky top-0 z-40 px-4 py-3 flex items-center justify-center transition-opacity duration-300"
+      style="background-color: #{secondaryColor}; opacity: {headerOpacity};"
     >
       <!-- Close button -->
       <button
