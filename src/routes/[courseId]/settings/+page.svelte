@@ -1390,7 +1390,7 @@
     <!-- Last Editor Advisory Modal -->
     {#if showLastEditorAdvisory}
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+        <div class="bg-white rounded-2xl p-6 max-w-[280px]">
           <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Add another then try again.</p>
           <div class="flex justify-end">
             <button
@@ -1409,7 +1409,7 @@
     <!-- Last Member Advisory Modal -->
     {#if showLastMemberAdvisory}
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+        <div class="bg-white rounded-2xl p-6 max-w-[280px]">
           <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Delete the team, then join another.</p>
           <div class="flex justify-end">
             <button
