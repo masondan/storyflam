@@ -1131,10 +1131,10 @@
 
     <!-- Bottom Toolbar Wrapper - fixed above keyboard when visible -->
     <div 
-      class="toolbar-wrapper shrink-0 bg-white left-1/2 -translate-x-1/2 max-w-[480px] w-full"
+      class="toolbar-wrapper shrink-0 bg-white max-w-[480px] w-full"
       class:fixed={isKeyboardVisible}
       class:z-[60]={isKeyboardVisible}
-      style={isKeyboardVisible ? `bottom: ${toolbarBottomPosition}px;` : ''}
+      style={isKeyboardVisible ? `left: 50%; transform: translateX(-50%); bottom: ${toolbarBottomPosition}px;` : ''}
     >
       <!-- Publish Toolbar (when active) -->
       {#if showPublishToolbar}
