@@ -54,6 +54,7 @@
   // Keyboard detection for toolbar positioning
   let keyboardHeight = 0
   let isKeyboardVisible = false
+  let toolbarBottomPosition = 0
 
   $: wordCount = countWords()
   $: canPublish = title.trim().length > 0 && !!$session?.teamName
@@ -142,6 +143,16 @@
     const heightDiff = windowHeight - viewportHeight
     isKeyboardVisible = heightDiff > 100
     keyboardHeight = isKeyboardVisible ? heightDiff : 0
+    
+    // Calculate toolbar position accounting for viewport scroll offset
+    // This keeps toolbar fixed relative to actual visible area, not layout viewport
+    if (isKeyboardVisible) {
+      // Position from bottom of visible viewport (above keyboard)
+      // viewport.offsetTop accounts for any scroll of the visual viewport
+      toolbarBottomPosition = windowHeight - viewport.height - viewport.offsetTop
+    } else {
+      toolbarBottomPosition = 0
+    }
   }
 
   onMount(() => {
@@ -1123,7 +1134,7 @@
       class="toolbar-wrapper shrink-0 bg-white left-1/2 -translate-x-1/2 max-w-[480px] w-full"
       class:fixed={isKeyboardVisible}
       class:z-[60]={isKeyboardVisible}
-      style={isKeyboardVisible ? `bottom: ${keyboardHeight}px;` : ''}
+      style={isKeyboardVisible ? `bottom: ${toolbarBottomPosition}px;` : ''}
     >
       <!-- Publish Toolbar (when active) -->
       {#if showPublishToolbar}
