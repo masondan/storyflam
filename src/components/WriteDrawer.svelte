@@ -1063,7 +1063,7 @@
     </header>
 
     <!-- Title Input (Sticky, stays above keyboard) -->
-    <div class="sticky top-0 bg-white z-40 px-4 py-3 border-b border-[#efefef] shrink-0">
+    <div class="sticky top-0 bg-white z-40 px-4 py-3 shrink-0">
       <textarea
         bind:value={title}
         on:input={scheduleAutoSave}
@@ -1273,40 +1273,42 @@
         <div class="w-px h-6 bg-[#999999]"></div>
 
         <div class="flex items-center gap-3">
-          <button on:click={openPreview} class="p-2" aria-label="Preview">
+          <button on:click={openPreview} class="p-2 rounded-full" style="background-color: #{$teamColors.primary};" aria-label="Preview">
             <img
               src="/icons/icon-preview.svg"
               alt=""
               class="w-5 h-5"
-              style="filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);"
+              style="filter: brightness(0) saturate(0) invert(100%);"
             />
           </button>
           {#if isPublishedStory}
             <!-- Save icon for editing published stories -->
             <button
               on:click={toggleSaveToolbar}
-              class="p-2 outline-none focus:outline-none"
+              class="p-2 rounded-full outline-none focus:outline-none"
+              style="background-color: #{$teamColors.primary};"
               aria-label="Save Changes"
             >
               <img
                 src={showSaveToolbar ? '/icons/icon-publish-fill.svg' : '/icons/icon-publish.svg'}
                 alt=""
                 class="w-5 h-5"
-                style="filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);"
+                style="filter: brightness(0) saturate(0) invert(100%);"
               />
             </button>
           {:else}
             <!-- Publish button for drafts -->
             <button
               on:click={togglePublishToolbar}
-              class="p-2 outline-none focus:outline-none"
+              class="p-2 rounded-full outline-none focus:outline-none"
+              style="background-color: #{$teamColors.primary};"
               aria-label="Publish"
             >
               <img
                 src={showPublishToolbar ? '/icons/icon-publish-fill.svg' : '/icons/icon-publish.svg'}
                 alt=""
                 class="w-5 h-5"
-                style="filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);"
+                style="filter: brightness(0) saturate(0) invert(100%);"
               />
             </button>
           {/if}
