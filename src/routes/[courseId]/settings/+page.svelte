@@ -881,6 +881,22 @@
     session.logout()
     goto('/')
   }
+
+  function hexToFilter(hex: string): string {
+    // Mapping of color palettes to their filter values
+    const colorFilters: Record<string, string> = {
+      '5422b0': 'invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%)',     // Indigo
+      '02441f': 'invert(28%) sepia(95%) saturate(1800%) hue-rotate(120deg) brightness(45%) contrast(100%)',    // Black Forest
+      '004269': 'invert(22%) sepia(95%) saturate(2200%) hue-rotate(200deg) brightness(55%) contrast(95%)',      // Yale Blue
+      '935D00': 'invert(38%) sepia(85%) saturate(1400%) hue-rotate(30deg) brightness(75%) contrast(85%)',        // Golden Earth
+      '801c00': 'invert(28%) sepia(95%) saturate(2800%) hue-rotate(10deg) brightness(55%) contrast(100%)',      // Molten Lava
+      'ab0000': 'invert(23%) sepia(95%) saturate(3300%) hue-rotate(0deg) brightness(55%) contrast(100%)',       // Inferno
+      '333333': 'invert(20%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(50%) contrast(90%)'             // Graphite
+    }
+    
+    const cleanHex = hex.replace('#', '').toLowerCase()
+    return colorFilters[cleanHex] || 'invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%)'
+  }
 </script>
 
 <svelte:head>
@@ -981,14 +997,14 @@
                     src="/icons/icon-check.svg"
                     alt="Available"
                     class="w-5 h-5"
-                    style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                    style="filter: {hexToFilter(primaryColor)};"
                   />
                 {:else if !bylineValid}
                   <img
                     src="/icons/icon-close-circle-fill.svg"
                     alt="Not available"
                     class="w-5 h-5"
-                    style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                    style="filter: {hexToFilter(primaryColor)};"
                   />
                 {:else}
                   <img
@@ -1003,7 +1019,7 @@
                   src="/icons/icon-check.svg"
                   alt="Verified"
                   class="w-5 h-5"
-                  style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                  style="filter: {hexToFilter(primaryColor)};"
                 />
               {/if}
             </div>
@@ -1044,7 +1060,7 @@
               <!-- Left column: label, input, helper text -->
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-2">
-                  <label for="create-team-input" class="text-sm text-[#777777]">Team name</label>
+                  <label for="create-team-input" class="text-sm text-[#777777]">Create team</label>
                   <span class="text-xs text-[#999999]">{createTeamInput.length} / 30</span>
                 </div>
                 
@@ -1088,14 +1104,14 @@
                       src="/icons/icon-check.svg"
                       alt="Available"
                       class="w-5 h-5"
-                      style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                      style="filter: {hexToFilter(primaryColor)};"
                     />
                   {:else if createTeamValid === false}
                     <img
                       src="/icons/icon-close-circle-fill.svg"
                       alt="Not available"
                       class="w-5 h-5"
-                      style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                      style="filter: {hexToFilter(primaryColor)};"
                     />
                   {:else}
                     <img
@@ -1172,7 +1188,7 @@
                           src="/icons/icon-check-fill.svg"
                           alt="Current team"
                           class="w-5 h-5"
-                          style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                          style="filter: {hexToFilter(primaryColor)};"
                         />
                       {:else}
                         <img

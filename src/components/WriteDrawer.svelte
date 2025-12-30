@@ -1030,6 +1030,22 @@
     const hours = Math.floor(minutes / 60)
     return `Saved ${hours}h ago`
   }
+
+  function hexToFilter(hex: string): string {
+    // Mapping of color palettes to their filter values
+    const colorFilters: Record<string, string> = {
+      '5422b0': 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%)',     // Indigo
+      '02441f': 'invert(25%) sepia(100%) saturate(1500%) hue-rotate(120deg) brightness(40%) contrast(100%)',    // Black Forest
+      '004269': 'invert(20%) sepia(100%) saturate(2000%) hue-rotate(200deg) brightness(50%) contrast(95%)',      // Yale Blue
+      '935D00': 'invert(35%) sepia(90%) saturate(1200%) hue-rotate(30deg) brightness(70%) contrast(85%)',        // Golden Earth
+      '801c00': 'invert(25%) sepia(100%) saturate(2500%) hue-rotate(10deg) brightness(50%) contrast(100%)',      // Molten Lava
+      'ab0000': 'invert(20%) sepia(100%) saturate(3000%) hue-rotate(0deg) brightness(50%) contrast(100%)',       // Inferno
+      '333333': 'invert(18%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(45%) contrast(90%)'             // Graphite
+    }
+    
+    const cleanHex = hex.replace('#', '').toLowerCase()
+    return colorFilters[cleanHex] || 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%)'
+  }
 </script>
 
 {#if $writeDrawerOpen}
@@ -1273,42 +1289,40 @@
         <div class="w-px h-6 bg-[#999999]"></div>
 
         <div class="flex items-center gap-3">
-          <button on:click={openPreview} class="p-2 rounded-full" style="background-color: #{$teamColors.primary};" aria-label="Preview">
+          <button on:click={openPreview} class="p-2" aria-label="Preview">
             <img
               src="/icons/icon-preview.svg"
               alt=""
               class="w-5 h-5"
-              style="filter: brightness(0) saturate(0) invert(100%);"
+              style="filter: {hexToFilter($teamColors.primary)};"
             />
           </button>
           {#if isPublishedStory}
             <!-- Save icon for editing published stories -->
             <button
               on:click={toggleSaveToolbar}
-              class="p-2 rounded-full outline-none focus:outline-none"
-              style="background-color: #{$teamColors.primary};"
+              class="p-2 outline-none focus:outline-none"
               aria-label="Save Changes"
             >
               <img
                 src={showSaveToolbar ? '/icons/icon-publish-fill.svg' : '/icons/icon-publish.svg'}
                 alt=""
                 class="w-5 h-5"
-                style="filter: brightness(0) saturate(0) invert(100%);"
+                style="filter: {hexToFilter($teamColors.primary)};"
               />
             </button>
           {:else}
             <!-- Publish button for drafts -->
             <button
               on:click={togglePublishToolbar}
-              class="p-2 rounded-full outline-none focus:outline-none"
-              style="background-color: #{$teamColors.primary};"
+              class="p-2 outline-none focus:outline-none"
               aria-label="Publish"
             >
               <img
                 src={showPublishToolbar ? '/icons/icon-publish-fill.svg' : '/icons/icon-publish.svg'}
                 alt=""
                 class="w-5 h-5"
-                style="filter: brightness(0) saturate(0) invert(100%);"
+                style="filter: {hexToFilter($teamColors.primary)};"
               />
             </button>
           {/if}
