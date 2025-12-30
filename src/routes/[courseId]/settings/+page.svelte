@@ -14,7 +14,7 @@
   import AdminTab from '$components/AdminTab.svelte'
 
   type TabType = 'settings' | 'teams' | 'admin'
-  type ConfirmationAction = null | 'create-team' | 'join-team' | 'leave-team' | 'make-editor'
+  type ConfirmationAction = null | 'create-team' | 'leave-team' | 'make-editor'
 
   let activeTab: TabType = 'settings'
 
@@ -35,11 +35,12 @@
   let createTeamError = ''
   let createTeamSaving = false
 
-  // Join team state
+  // Join team state (inline toolbar)
   let availableTeams: Team[] = []
-  let selectedTeamForJoin: Team | null = null
-  let joiningTeam = false
-  let teamLocked = false
+  let joiningTeamId: string | null = null
+  let joiningTeamName: string | null = null
+  let joiningTeamLocked = false
+  let isJoiningTeam = false
 
   // Team data
   let team: Team | null = null
@@ -395,9 +396,52 @@
   }
 
   function openJoinTeamConfirmation(team: Team) {
-    selectedTeamForJoin = team
-    teamLocked = team.team_lock ?? false
-    confirmationAction = 'join-team'
+    joiningTeamId = team.id
+    joiningTeamName = team.team_name
+    joiningTeamLocked = team.team_lock ?? false
+  }
+
+  function cancelJoinTeam() {
+    joiningTeamId = null
+    joiningTeamName = null
+    joiningTeamLocked = false
+  }
+
+  async function confirmJoinTeamInline() {
+    if (!joiningTeamName || isJoiningTeam) return
+
+    isJoiningTeam = true
+
+    try {
+      const { error } = await supabase
+        .from('journalists')
+        .update({
+          team_name: joiningTeamName,
+          is_editor: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('course_id', courseId)
+        .eq('name', currentUserName)
+
+      if (error) throw error
+
+      session.set({
+        ...$session!,
+        teamName: joiningTeamName
+      })
+
+      const joinedName = joiningTeamName
+      joiningTeamId = null
+      joiningTeamName = null
+      joiningTeamLocked = false
+      showNotification('success', `Joined "${joinedName}"`)
+      await loadTeamData(joinedName)
+    } catch (error) {
+      console.error('Join team error:', error)
+      showNotification('error', 'Failed to join team. Try again.')
+    } finally {
+      isJoiningTeam = false
+    }
   }
 
   function openLeaveTeamConfirmation(memberName: string) {
@@ -454,42 +498,6 @@
     } catch (error) {
       console.error('Create team error:', error)
       showNotification('error', 'Failed to create team. Try again.')
-    } finally {
-      confirmationLoading = false
-    }
-  }
-
-  async function confirmJoinTeam() {
-    if (!selectedTeamForJoin || joiningTeam) return
-
-    confirmationLoading = true
-    const teamNameToJoin = selectedTeamForJoin.team_name
-
-    try {
-      const { error } = await supabase
-        .from('journalists')
-        .update({
-          team_name: teamNameToJoin,
-          is_editor: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('course_id', courseId)
-        .eq('name', currentUserName)
-
-      if (error) throw error
-
-      session.set({
-        ...$session!,
-        teamName: teamNameToJoin
-      })
-
-      confirmationAction = null
-      selectedTeamForJoin = null
-      showNotification('success', `Joined "${teamNameToJoin}"`)
-      await loadTeamData(teamNameToJoin)
-    } catch (error) {
-      console.error('Join team error:', error)
-      showNotification('error', 'Failed to join team. Try again.')
     } finally {
       confirmationLoading = false
     }
@@ -651,7 +659,6 @@
     confirmationAction = null
     selectedMemberForRemoval = null
     selectedMemberForEditor = null
-    selectedTeamForJoin = null
     confirmationLoading = false
   }
 
@@ -1151,30 +1158,78 @@
             {#if availableTeams.length > 0}
               <div>
                 {#each availableTeams as availTeam (availTeam.id)}
-                  <button
-                    type="button"
-                    on:click={() => availTeam.team_name !== currentTeamName && openJoinTeamConfirmation(availTeam)}
-                    class="w-full flex items-center justify-between py-3 text-left transition-colors border-b border-[#e0e0e0]"
-                    class:hover:bg-[#f5f5f5]={availTeam.team_name !== currentTeamName}
-                    class:cursor-default={availTeam.team_name === currentTeamName}
-                  >
-                    <span class="text-base text-[#333333]">{availTeam.team_name}</span>
-                    {#if availTeam.team_name === currentTeamName}
-                      <img
-                        src="/icons/icon-check-fill.svg"
-                        alt="Current team"
-                        class="w-5 h-5"
-                        style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
-                      />
-                    {:else}
-                      <img
-                        src="/icons/icon-circle.svg"
-                        alt=""
-                        class="w-5 h-5"
-                        style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-                      />
+                  <div>
+                    <button
+                      type="button"
+                      on:click={() => availTeam.team_name !== currentTeamName && joiningTeamId !== availTeam.id && openJoinTeamConfirmation(availTeam)}
+                      class="w-full flex items-center justify-between py-3 text-left transition-colors border-b border-[#e0e0e0]"
+                      class:hover:bg-[#f5f5f5]={availTeam.team_name !== currentTeamName && joiningTeamId !== availTeam.id}
+                      class:cursor-default={availTeam.team_name === currentTeamName || joiningTeamId === availTeam.id}
+                    >
+                      <span class="text-base text-[#333333]">{availTeam.team_name}</span>
+                      {#if availTeam.team_name === currentTeamName}
+                        <img
+                          src="/icons/icon-check-fill.svg"
+                          alt="Current team"
+                          class="w-5 h-5"
+                          style="filter: invert(18%) sepia(89%) saturate(2264%) hue-rotate(254deg) brightness(87%) contrast(97%);"
+                        />
+                      {:else}
+                        <img
+                          src="/icons/icon-circle.svg"
+                          alt=""
+                          class="w-5 h-5"
+                          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+                        />
+                      {/if}
+                    </button>
+
+                    <!-- Inline join toolbar -->
+                    {#if joiningTeamId === availTeam.id}
+                      <div class="flex justify-end py-2 border-b border-[#e0e0e0]">
+                        {#if joiningTeamLocked}
+                          <div 
+                            class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
+                            style="background-color: #{primaryColor};"
+                          >
+                            <span class="opacity-70">Team locked</span>
+                            <span class="mx-3 opacity-60">|</span>
+                            <button
+                              type="button"
+                              on:click={cancelJoinTeam}
+                              class="transition-opacity hover:opacity-80"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        {:else}
+                          <div 
+                            class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
+                            style="background-color: #{primaryColor};"
+                          >
+                            <button
+                              type="button"
+                              on:click={confirmJoinTeamInline}
+                              disabled={isJoiningTeam}
+                              class="transition-opacity"
+                              class:opacity-50={isJoiningTeam}
+                            >
+                              {isJoiningTeam ? 'Joining...' : 'Join team'}
+                            </button>
+                            <span class="mx-3 opacity-60">|</span>
+                            <button
+                              type="button"
+                              on:click={cancelJoinTeam}
+                              disabled={isJoiningTeam}
+                              class="transition-opacity hover:opacity-80"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        {/if}
+                      </div>
                     {/if}
-                  </button>
+                  </div>
                 {/each}
               </div>
             {:else}
@@ -1299,50 +1354,6 @@
             </p>
           </div>
         {/if}
-      </div>
-    {/if}
-
-    <!-- Confirmation Modals -->
-    {#if confirmationAction === 'join-team'}
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
-          {#if teamLocked}
-            <h2 class="text-lg font-semibold text-[#333333] mb-2">Team locked</h2>
-            <p class="text-sm text-[#666666] mb-6">Sorry, this team is locked by an editor</p>
-            <button
-              type="button"
-              on:click={cancelConfirmation}
-              class="w-full px-4 py-2 rounded-full text-white text-sm font-medium"
-              style="background-color: #${primaryColor};"
-            >
-              OK
-            </button>
-          {:else}
-            <h2 class="text-lg font-semibold text-[#333333] mb-2">Join team</h2>
-            <p class="text-sm text-[#666666] mb-6">Join "{selectedTeamForJoin?.team_name}"?</p>
-
-            <div class="flex gap-3">
-              <button
-                type="button"
-                on:click={cancelConfirmation}
-                disabled={confirmationLoading}
-                class="flex-1 px-4 py-2 rounded-full border border-[#{primaryColor}] text-[#{primaryColor}] text-sm font-medium transition-all hover:bg-[#{primaryColor}] hover:bg-opacity-10"
-                style="border-color: #${primaryColor}; color: #${primaryColor};"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                on:click={confirmJoinTeam}
-                disabled={confirmationLoading}
-                class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all"
-                style="background-color: #${primaryColor};"
-              >
-                {confirmationLoading ? 'Joining...' : 'Join'}
-              </button>
-            </div>
-          {/if}
-        </div>
       </div>
     {/if}
 
