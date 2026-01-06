@@ -910,7 +910,7 @@
   <title>NewsLab - Settings</title>
 </svelte:head>
 
-<div class="min-h-screen bg-white flex flex-col pb-[60px]">
+<div class="relative min-h-screen bg-white flex flex-col pb-[60px]">
   <main class="flex-1 px-4 py-4">
     <!-- Tab Navigation -->
     <div class="flex items-center gap-6 mb-6">
@@ -1394,7 +1394,7 @@
 
     <!-- Last Editor Advisory Modal -->
     {#if showLastEditorAdvisory}
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-[280px]">
           <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Add another then try again.</p>
           <div class="flex justify-end">
@@ -1413,7 +1413,7 @@
 
     <!-- Last Member Advisory Modal -->
     {#if showLastMemberAdvisory}
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-[280px]">
           <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Delete the team, then join another.</p>
           <div class="flex justify-end">
@@ -1432,7 +1432,7 @@
 
     <!-- Delete Team Confirmation Modal -->
     {#if deleteTeamConfirming}
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
           <h2 class="text-lg font-semibold text-[#333333] mb-2">Delete the team</h2>
           <p class="text-sm text-[#666666] mb-6">Are you sure? This cannot be undone.</p>
@@ -1459,7 +1459,7 @@
 
     <!-- Join Without Leaving Advisory Modal -->
     {#if showJoinWithoutLeavingAdvisory}
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-[280px]">
           <p class="text-sm text-[#333333] mb-4">Please leave your team before joining a new team</p>
           <div class="flex justify-end">
