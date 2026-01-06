@@ -1387,10 +1387,24 @@
 
   .editor-content :global(p) {
     margin-bottom: 1rem;
+    margin-top: 0;
   }
 
   .editor-content :global(h2) {
     margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .editor-content :global(figure) {
+    margin-bottom: 1rem;
+  }
+
+  .editor-content :global(ul),
+  .editor-content :global(ol) {
+    margin-bottom: 1rem;
+  }
+
+  .editor-content :global(hr) {
     margin-bottom: 1rem;
   }
 
