@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation'
   import { session, showNotification, teamColors, isTrainer, isGuestEditor } from '$lib/stores'
   import { supabase } from '$lib/supabase'
+  import { logActivity } from '$lib/activity'
   import type { Team, Journalist } from '$lib/types'
   import ConfirmationToolbar from '$components/ConfirmationToolbar.svelte'
   import ColorPalette from '$components/ColorPalette.svelte'
@@ -442,6 +443,10 @@
       joiningTeamName = null
       joiningTeamLocked = false
       showNotification('success', `Joined "${joinedName}"`)
+      
+      // Log the join activity
+      await logActivity(courseId, joinedName, 'joined_team', currentUserName)
+      
       await loadTeamData(joinedName)
     } catch (error) {
       console.error('Join team error:', error)
@@ -536,6 +541,9 @@
           .eq('course_id', courseId)
           .eq('team_name', currentTeamName)
       }
+
+      // Log the leave activity
+      await logActivity(courseId, currentTeamName, 'left_team', memberToRemove)
 
       if (memberToRemove === currentUserName) {
         session.set({
@@ -651,6 +659,10 @@
       await loadTeamMembers()
       const action = willBeEditor ? 'promoted to editor' : 'demoted from editor'
       showNotification('success', `${name} ${action}`)
+
+      // Log the editor status change
+      const logAction = willBeEditor ? 'promoted_editor' : 'demoted_editor'
+      await logActivity(courseId, currentTeamName, logAction, name)
 
       confirmationAction = null
       selectedMemberForEditor = null
