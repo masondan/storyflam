@@ -1257,6 +1257,7 @@
         <div>
             <div class="flex items-center justify-between">
               <span class="text-sm text-[#777777]">Team members</span>
+              <span class="text-sm text-[#777777]">Editors</span>
             </div>
             <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
 
@@ -1292,7 +1293,7 @@
             <!-- Explanation text below members list -->
             {#if teamMembers.length > 0}
               <p class="text-sm text-[#999999] mt-3">
-                Teams must have at least one editor. To leave the team, tap X. When you leave, all published stories will revert to drafts.
+                To leave the team, tap x. When you leave, all published stories revert to drafts. You cannot join more than one team.
               </p>
             {/if}
           </div>

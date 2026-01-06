@@ -3,14 +3,14 @@
 **Purpose:** Complete technical reference for AI agents implementing NewsLab.  
 **Audience:** Code leads, developers, AI agents  
 **Status:** Ready for implementation  
-**Last Updated:** December 2025
+**Last Updated:** January 2026
 
 ---
 
 ## Quick Start for AI Agents
 
 ## About the app
-- NewsLab is a simple, non-commercial mobile-first CMS for use by journalists during training courses. It aims to encourage collaboraiton, teamwork and creativity.It is live on CloudFlare Pages at: thenewslab.pages.dev, via GitHub.
+- NewsLab is a simple, non-commercial mobile-first CMS for use by journalists during training courses. It aims to encourage collaboration, teamwork and creativity. It is live on CloudFlare Pages at: thenewslab.pages.dev, via GitHub.
 
 ### Core Workflows (Fast Reference)
 
@@ -112,13 +112,18 @@ const subscription = supabase
 2. [Permission Model](#permission-model)
 3. [Authentication Flow](#authentication-flow)
 4. [Story Management](#story-management)
-5. [Realtime Subscriptions](#realtime-subscriptions)
-6. [Rich Text Content](#rich-text-content)
-7. [State Management](#state-management)
-8. [Component Architecture](#component-architecture)
-9. [Error Handling](#error-handling)
-10. [Performance Targets](#performance-targets)
-11. [Cloudinary Integration](#cloudinary-integration)
+5. [Lock Management](#lock-management)
+6. [Activity Logging](#activity-logging)
+7. [Realtime Subscriptions](#realtime-subscriptions)
+8. [Rich Text Content](#rich-text-content)
+9. [State Management](#state-management)
+10. [Component Architecture](#component-architecture)
+11. [Component Dependency Graph](#component-dependency-graph)
+12. [Error Handling](#error-handling)
+13. [Export Functionality](#export-functionality)
+14. [Performance Targets](#performance-targets)
+15. [Cloudinary Integration](#cloudinary-integration)
+16. [Known Limitations & Technical Debt](#known-limitations--technical-debt)
 
 ---
 
@@ -233,7 +238,7 @@ CREATE INDEX idx_stories_pinned ON stories(course_id, team_name, is_pinned) WHER
 - `locked_by = null` → Story is unlocked, multiple users can view
 - `locked_by = 'journalist_name'` → Story is being edited, others see lock warning
 - Release lock: Set `locked_by = null` (on save or timeout)
-- Timeout: 15 minutes of inactivity (client-side tracking)
+- Timeout: 5 minutes of inactivity (server-side enforcement)
 
 ### activity_log
 ```sql
@@ -402,11 +407,147 @@ updateStory(id, { is_pinned: true, pin_timestamp: NOW(), pin_index: 0 })
 - Delete team if no members remain
 - Log activity
 
-### Story Lock & Unlock
-- Acquire lock: Set `locked_by = journalist_name`, `locked_at = NOW()`
-- Release lock: Set `locked_by = null`
-- Check lock before edit: If `locked_by != null` and different user, show warning
-- Timeout: 15 minutes (client-side; background job can clean up stale locks)
+---
+
+## Lock Management
+
+### Overview
+Story locking prevents concurrent editing conflicts. Each story can be locked by one journalist while being edited. Locks expire after 5 minutes of inactivity.
+
+### Lock Acquisition
+```typescript
+const { success, error } = await acquireLock(storyId, currentUserName)
+if (success) {
+  // Proceed with editing
+} else if (error) {
+  // Show "Story is being edited by [name]" warning
+}
+```
+
+**Implementation:**
+- Checks current lock status via `checkLock()`
+- Returns error if already locked by another user and lock is not expired
+- Sets `locked_by` and `locked_at` on successful acquisition
+- Client-side: Display `LockWarning.svelte` if locked by someone else
+
+### Lock Validation
+```typescript
+interface LockStatus {
+  isLocked: boolean        // true if locked by someone else (not expired, not self)
+  lockedBy: string | null  // Name of current lock holder
+  lockedAt: string | null  // ISO timestamp of lock acquisition
+  isExpired: boolean       // true if lock is older than 5 minutes
+  isSelf: boolean          // true if locked by current user
+}
+
+const lockStatus = await checkLock(storyId, currentUserName)
+if (lockStatus.isExpired) {
+  // Safe to acquire new lock
+}
+```
+
+### Lock Refresh
+```typescript
+// Refresh lock every 3 minutes to keep it alive during long edits
+const { error } = await refreshLock(storyId, currentUserName)
+```
+
+**Implementation:**
+- Updates `locked_at` timestamp without changing `locked_by`
+- Ensures lock doesn't expire during active editing
+- Should be called on a 3-minute interval (see WriteDrawer.svelte for pattern)
+
+### Lock Release
+```typescript
+// On save or exit
+const { error } = await releaseLock(storyId)
+// Sets locked_by and locked_at to null
+```
+
+**When to release:**
+- After saving story changes
+- On component destroy (cleanup)
+- On logout
+- On page navigation away from editor
+
+### Timeout Handling
+- **Lock timeout:** 5 minutes (defined in `stories.ts` as `LOCK_TIMEOUT_MS`)
+- **Client detection:** `isLockExpired(lockedAt)` returns true if lock is stale
+- **Server enforcement:** Database checks during acquire/refresh ensure timeout is respected
+- **UI feedback:** LockWarning component shows lock holder name and status
+
+### Pattern: Auto-refresh in Editor
+```typescript
+let lockRefreshTimer: ReturnType<typeof setInterval> | null = null
+
+onMount(async () => {
+  // Acquire initial lock
+  await acquireLock(storyId, userName)
+  
+  // Refresh every 3 minutes
+  lockRefreshTimer = setInterval(async () => {
+    await refreshLock(storyId, userName)
+  }, 3 * 60 * 1000)
+})
+
+onDestroy(() => {
+  clearInterval(lockRefreshTimer)
+  releaseLock(storyId)
+})
+```
+
+---
+
+## Activity Logging
+
+### Overview
+Activity log tracks all significant actions (publish, edit, pin, delete, team changes, role changes). Trainers view logs via Admin tab.
+
+### Logging Actions
+```typescript
+import { logActivity } from '$lib/activity'
+
+// After publishing story
+await logActivity(
+  courseId,
+  teamName,
+  'published',
+  journalistName,
+  storyId,
+  storyTitle
+)
+
+// Other actions: 'published', 'unpublished', 'edited', 'pinned', 'unpinned', 'deleted', 
+// 'joined_team', 'left_team', 'promoted_editor', 'demoted_editor'
+```
+
+### Fetching Activity Log
+```typescript
+const { data: entries, error } = await getActivityLog(courseId, limit = 100)
+// Returns entries ordered by created_at DESC, max 100 per call
+```
+
+### ActivityLogEntry Structure
+```typescript
+interface ActivityLogEntry {
+  id: string
+  course_id: string
+  team_name: string | null
+  journalist_name: string | null
+  action: ActivityAction
+  story_id: string | null
+  story_title: string | null
+  details: Record<string, unknown> | null
+  created_at: string
+}
+```
+
+### Activity Flow
+1. User performs action (e.g., publish, pin, delete)
+2. Story/team operation succeeds
+3. `logActivity()` is called with action details
+4. Entry is inserted into `activity_log` table
+5. Trainer views in AdminTab (realtime via subscription)
 
 ---
 
@@ -632,6 +773,79 @@ showNotification(type: 'success' | 'error' | 'info', message: string, duration =
 
 ---
 
+## Component Dependency Graph
+
+### Store Usage Map
+
+**Session & Auth Stores:**
+- `session` (Session | null) — Used by: FooterNav, PreviewDrawer, StoryReaderDrawer, AdminTab, Stream page, Settings page, Layout
+- `isLoggedIn` — Used by: Root layout, Course layout
+- `isTrainer` — Used by: Settings page
+- `isGuestEditor` — Used by: Settings page
+- `isJournalist` — Used by: (Derived, rarely directly consumed)
+
+**Drawer State Stores:**
+- `writeDrawerOpen` — Used by: FooterNav (toggle), WriteDrawer, Home page
+- `storyReaderDrawerOpen` — Used by: StoryReaderDrawer, Stream page, Home page, StoryCard
+- `previewDrawerOpen` — Used by: PreviewDrawer, WriteDrawer
+
+**Story & Editing Stores:**
+- `currentViewingStory` — Used by: StoryReaderDrawer, TeamStreamDrawer
+- `editingStory` — Used by: WriteDrawer, Home page
+- `teamColors` — Used by: Notification, FooterNav, PreviewDrawer, LinkModal, ThreeDotsMenu, StoryCard, (set by Layout on init)
+
+**Notification:**
+- `showNotification()` — Called by: TeamExpandable, ShareToggle, AdminTab, and most story/team operations
+
+**Colors:**
+- `COLOR_PALETTES` — Used by: ColorPalette component
+
+### Component Hierarchy
+```
+Layout (+layout.svelte)
+├── Notification.svelte (subscribes: notification, teamColors)
+├── FooterNav.svelte (subscribes: session, writeDrawerOpen, teamColors; dispatches: toggle drawer)
+├── Routes:
+│   ├── Home (/home/+page.svelte)
+│   │   ├── WriteDrawer.svelte (subscribes: editingStory, teamColors, etc.)
+│   │   │   ├── PreviewDrawer.svelte (subscribes: previewDrawerOpen, teamColors)
+│   │   │   ├── LockWarning.svelte
+│   │   │   ├── YouTubeModal.svelte
+│   │   │   └── LinkModal.svelte (subscribes: teamColors)
+│   │   └── StoryReaderDrawer.svelte
+│   │       └── TeamStreamDrawer.svelte (subscribes: currentViewingStory)
+│   │
+│   ├── Stream (/stream/+page.svelte)
+│   │   ├── StoryCard.svelte (subscribes: teamColors)
+│   │   │   └── ThreeDotsMenu.svelte (subscribes: teamColors)
+│   │   └── StoryReaderDrawer.svelte
+│   │       └── TeamStreamDrawer.svelte
+│   │
+│   ├── Settings (/settings/+page.svelte)
+│   │   ├── TeamsTab.svelte
+│   │   │   ├── TeamExpandable.svelte
+│   │   │   │   └── TeamMemberItem.svelte
+│   │   │   ├── ColorPalette.svelte
+│   │   │   ├── TeamLogoUpload.svelte
+│   │   │   └── TeamLockToggle.svelte
+│   │   └── AdminTab.svelte (subscribes: session)
+│   │       ├── ActivityLogRow.svelte
+│   │       └── ShareToggle.svelte
+│   │
+│   └── Public Share (/share/[teamName]/+page.svelte)
+│       └── StoryCard.svelte
+│
+```
+
+### Critical Store-to-Component Flow
+1. **User Login:** Sets `session` → Triggers layout redirect to home
+2. **Open WriteDrawer:** `writeDrawerOpen = true` → WriteDrawer mounts → Attempts lock → Shows LockWarning if locked
+3. **Save Story:** `editingStory.markSaved()` → WriteDrawer shows success
+4. **Publish Story:** `logActivity()` → Admin tab sees new entry (realtime)
+5. **Change Team:** `session.teamName` updated → `teamColors` updates → UI re-renders with new colors
+
+---
+
 ## Error Handling
 
 ### Error Types & User Messages
@@ -658,6 +872,86 @@ try {
   }
 }
 ```
+
+---
+
+## Export Functionality
+
+### Overview
+Stories can be exported to two formats: plain text (.txt) or PDF (.pdf). Both formats include title, author, summary, and all content blocks styled appropriately. Images and videos are referenced as inline text/links.
+
+### Export to Text
+```typescript
+import { exportToTxt } from '$lib/export'
+
+const story = await getStory(storyId)
+exportToTxt(story)
+// Downloads: {slugified-title}.txt
+```
+
+**Format:**
+- Title (bold, 24pt equivalent)
+- Author byline (12pt, gray)
+- Horizontal separator
+- Summary (italic, if present)
+- Content blocks converted to plain text
+- Lists formatted with bullets or numbers
+- Images/videos listed as `[Image: caption]` or `[YouTube: url]`
+- Links formatted as `text (url)`
+
+### Export to PDF
+```typescript
+import { exportToPdf } from '$lib/export'
+
+const story = await getStory(storyId)
+await exportToPdf(story)
+// Downloads: {slugified-title}.pdf
+// Uses jsPDF library (async import to reduce bundle)
+```
+
+**Format:**
+- Title (bold, 24pt, Helvetica)
+- Author byline (12pt, gray)
+- Horizontal separator
+- Summary (italic, 11pt, if present)
+- Content blocks formatted per type:
+  - Headings: 14pt bold
+  - Bold text: bold Helvetica
+  - Paragraphs: 11pt normal
+  - Lists: bullets or numbers
+  - Separators: centered horizontal line
+  - Images: `[Image: caption]` text
+  - Videos: `[YouTube: url]` text
+  - Links: `text (url)`
+- Auto page breaks at y=270mm
+- A4 portrait, 20mm margins, 160mm content width
+
+### Helper Functions
+
+**slugify(text): string**
+- Converts text to URL-safe filename
+- Lowercase, hyphens instead of spaces
+- Max 50 characters
+- Example: "Breaking News!" → "breaking-news"
+
+**blockToText(block): string**
+- Converts any ContentBlock to plain text representation
+- Used by both TXT and PDF exports
+- Handles all block types including links and videos
+
+**downloadFile(content, filename, mimeType)**
+- Creates blob, generates download link
+- Triggers browser download
+- Cleans up object URLs
+- Used internally by both export functions
+
+### When to Add Export Buttons
+Export is typically called from:
+- Story view/preview screen (download icon)
+- Context menus (three-dots menu on published stories)
+- Trainer dashboard (bulk export?)
+
+Current implementation: Async import ensures jsPDF is loaded only on-demand, keeping initial bundle size low.
 
 ---
 
@@ -718,6 +1012,62 @@ async function uploadImage(file) {
   }
 }
 ```
+
+---
+
+## Known Limitations & Technical Debt
+
+### Security
+- **No server-side authorization:** Permission checks are client-side only. All story/team operations are validated in browser. A malicious user could craft API calls to bypass client checks. **Mitigation:** Use Supabase RLS (Row-Level Security) policies to enforce server-side permissions.
+- **Session tokens not validated server-side:** Session contains a UUID token that's stored in localStorage but never validated against a backend. **Mitigation:** Implement session validation endpoint or use Supabase Auth for better session management.
+- **Trainer/Guest Editor IDs are plaintext:** Trainer and guest editor passwords stored unencrypted in `newslabs` table. **Mitigation:** Consider API keys or passwordless auth (magic links, OAuth).
+
+### Data Integrity
+- **No atomic transactions:** Publishing a story and logging activity are two separate database calls. If the second fails, the log is missing. **Mitigation:** Use Supabase transaction functions or move activity logging to a database trigger.
+- **Lock timeout is client-side:** Locks depend on client checking `locked_at` timestamp. A client could hold a lock indefinitely if it crashes before releasing. **Mitigation:** Implement server-side lock cleanup job (e.g., clear locks older than 10 minutes every 5 minutes).
+- **Team deletion logic incomplete:** No database cascade for team deletion; stories orphaned when team deleted. **Mitigation:** Use database triggers or enforce cascade on delete at the application level.
+
+### Performance & Scalability
+- **No pagination:** `getTeamStream()` fetches all published stories at once. Large teams (1000+ stories) will cause performance issues. **Mitigation:** Implement cursor-based pagination (fetch 10-20 stories per page).
+- **Realtime subscriptions always-on:** Subscriptions are created but rarely cleaned up. Long-lived pages (e.g., stream) accumulate multiple subscriptions. **Mitigation:** Explicit unsubscribe on component destroy; consider debouncing subscription updates.
+- **No caching:** Every page load refetches all data from Supabase. No local caching layer. **Mitigation:** Implement SvelteKit data loading (`+page.server.ts`) or client-side cache store.
+
+### Features Not Yet Implemented
+- **Bulk export:** Admin tab could allow exporting all stories in a course as ZIP or CSV. Currently only individual story export available.
+- **Rich text formatting UI:** Editor supports bold/heading/lists in JSON, but the UI is basic (no WYSIWYG editor). Content must be manually composed as blocks.
+- **Search:** No full-text search across stories. Users must scroll through entire stream.
+- **Comments/Feedback:** No commenting system on published stories; no way for readers to provide feedback to authors.
+- **Draft auto-save:** No auto-save interval; users must manually click save. **Mitigation:** Implement auto-save every 30 seconds during editing.
+- **Story versions/history:** No revision tracking; editing a story overwrites previous version. **Mitigation:** Add `story_versions` table to track edits.
+
+### Code Quality
+- **Large components:** `WriteDrawer.svelte` is 1336 lines; difficult to maintain and test. **Mitigation:** Break into smaller sub-components (Editor, ToolBar, Modal, etc.).
+- **No unit tests:** No test suite for Svelte components or utility functions. **Mitigation:** Set up Vitest + Svelte Testing Library.
+- **Minimal TypeScript strict mode:** Types are defined but not rigorously enforced. **Mitigation:** Enable `strict: true` in `tsconfig.json`; fix type errors.
+- **Error handling inconsistent:** Some functions use `try-catch`, others use Supabase error objects. **Mitigation:** Create standardized error handling utility.
+
+### Known Bugs & Issues
+- **Lock timeout edge case:** If user's clock is ahead of server, `isLockExpired()` may incorrectly report lock as expired. **Impact:** Low; unlikely in practice.
+- **Team colors not synced:** If team colors change while user is viewing stream, colors don't update without page refresh. **Impact:** Minor; colors persist for session.
+- **Image upload size limit:** No client-side validation of file size before upload. Large files will fail silently. **Impact:** Poor UX; should show error message.
+
+### Browser & Device Support
+- **Mobile viewport:** Designed for mobile, but not tested on older devices (iOS < 13, Android < 8). **Mitigation:** Test on BrowserStack or similar.
+- **Offline support:** No service worker or offline mode. Page fully broken if offline. **Mitigation:** Implement PWA with offline cache.
+
+### Deployment & DevOps
+- **No environment management:** `.env.example` not checked in; setup instructions unclear. **Mitigation:** Add setup docs to README.
+- **No monitoring/logging:** No error tracking (Sentry) or analytics. **Mitigation:** Integrate error tracking early.
+- **No CI/CD pipeline:** Builds & deploys manual via CloudFlare Pages. **Mitigation:** Set up GitHub Actions for automated tests & deploy.
+
+### Dependencies
+- **Supabase version:** Built on `@supabase/supabase-js ^2.38.4`; may need updates for security fixes. **Mitigation:** Regular dependency audits.
+- **jsPDF limitations:** PDF export doesn't support images embedded directly (only referenced as text). **Mitigation:** Consider alternative PDF library (pdfkit, html2pdf) if image embedding needed.
+
+### Documentation Gaps
+- **No inline comments:** Code lacks JSDoc comments explaining complex logic. **Mitigation:** Add comments to business-critical functions (lock logic, publish flow).
+- **Setup instructions missing:** No `.env.setup` or deployment guide. **Mitigation:** Add SETUP.md with Supabase setup, environment variables, and local dev instructions.
+- **Component API documentation:** Props and events not documented for reusable components. **Mitigation:** Add prop/event documentation as JSDoc blocks.
 
 ---
 
