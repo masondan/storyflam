@@ -69,6 +69,7 @@
   // Advisory modals for last editor/member edge cases
   let showLastEditorAdvisory = false
   let showLastMemberAdvisory = false
+  let showJoinWithoutLeavingAdvisory = false
 
   $: courseId = $session?.courseId || ''
   $: currentUserName = $session?.name || ''
@@ -396,6 +397,12 @@
   }
 
   function openJoinTeamConfirmation(team: Team) {
+    // Check if journalist is already in a different team
+    if (currentTeamName && currentTeamName !== team.team_name) {
+      showJoinWithoutLeavingAdvisory = true
+      return
+    }
+
     joiningTeamId = team.id
     joiningTeamName = team.team_name
     joiningTeamLocked = team.team_lock ?? false
@@ -1444,6 +1451,25 @@
               class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all bg-red-600 hover:bg-red-700"
             >
               Delete team
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Join Without Leaving Advisory Modal -->
+    {#if showJoinWithoutLeavingAdvisory}
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-[280px]">
+          <p class="text-sm text-[#333333] mb-4">Please leave your team before joining a new team</p>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              on:click={() => (showJoinWithoutLeavingAdvisory = false)}
+              class="text-sm font-medium"
+              style="color: #{primaryColor};"
+            >
+              Got it
             </button>
           </div>
         </div>
