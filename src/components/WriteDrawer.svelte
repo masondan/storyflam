@@ -469,8 +469,39 @@
   }
 
   function handleEditorInput() {
+    normalizeEditorContent()
     contentBlocks = parseEditorContent()
     scheduleAutoSave()
+  }
+
+  function normalizeEditorContent() {
+    if (!editorElement) return
+    
+    // Wrap loose text nodes in <p> tags to ensure proper spacing
+    const children = Array.from(editorElement.childNodes)
+    
+    for (let i = 0; i < children.length; i++) {
+      const node = children[i]
+      
+      // Skip if already a proper block element
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement
+        const tag = el.tagName.toLowerCase()
+        if (['p', 'h2', 'figure', 'ul', 'ol', 'hr'].includes(tag)) {
+          continue
+        }
+      }
+      
+      // If it's a text node with content, wrap in <p>
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = (node as Text).textContent || ''
+        if (text.trim().length > 0) {
+          const p = document.createElement('p')
+          p.appendChild(node.cloneNode(true))
+          editorElement.replaceChild(p, node)
+        }
+      }
+    }
   }
 
   function handleEditorPaste(event: ClipboardEvent) {

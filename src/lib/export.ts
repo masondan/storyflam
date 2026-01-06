@@ -59,25 +59,6 @@ export async function exportToPdf(story: Story): Promise<void> {
     y += summaryLines.length * 6 + 8
   }
 
-  // Add featured image if present
-  if (story.featured_image_url) {
-    try {
-      const { imageData, width, height } = await fetchAndEncodeImage(story.featured_image_url)
-      const imgHeight = (height / width) * maxImageWidth
-      
-      if (y + imgHeight > 270) {
-        doc.addPage()
-        y = margin
-      }
-      
-      const imgX = (pageWidth - maxImageWidth) / 2
-      doc.addImage(imageData, 'JPEG', imgX, y, maxImageWidth, imgHeight)
-      y += imgHeight + 8
-    } catch (error) {
-      console.error('Failed to embed featured image:', error)
-    }
-  }
-
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
 
@@ -101,14 +82,14 @@ export async function exportToPdf(story: Story): Promise<void> {
           
           const imgX = (pageWidth - maxImageWidth) / 2
           doc.addImage(imageData, 'JPEG', imgX, y, maxImageWidth, imgHeight)
-          y += imgHeight + 2
+          y += imgHeight + 10
 
           if (block.caption) {
             doc.setFontSize(9)
             doc.setTextColor(100)
             const captionLines = doc.splitTextToSize(block.caption, contentWidth)
             doc.text(captionLines, margin, y)
-            y += captionLines.length * 4 + 6
+            y += captionLines.length * 4 + 8
             doc.setTextColor(0)
             doc.setFontSize(11)
           }
