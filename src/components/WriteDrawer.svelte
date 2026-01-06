@@ -373,8 +373,8 @@
         const tagName = el.tagName.toLowerCase()
         
         if (tagName === 'p') {
-          // Skip spacer paragraphs (those with only &nbsp;)
-          if (el.innerHTML === '&nbsp;' || el.innerHTML === '') {
+          // Skip spacer paragraphs (those with only &nbsp; or marked as spacer)
+          if (el.getAttribute('data-spacer') === 'true' || el.innerHTML === '&nbsp;' || el.innerHTML === '') {
             return
           }
           
@@ -655,7 +655,8 @@
       if (!nextSibling || (nextSibling.nodeType === Node.ELEMENT_NODE && (nextSibling as HTMLElement).tagName.toLowerCase() === 'figure')) {
         const newPara = document.createElement('p')
         newPara.className = 'mb-4'
-        newPara.innerHTML = '<br>'
+        newPara.innerHTML = '&nbsp;'  // Use &nbsp; to match renderContentToEditor spacers
+        newPara.setAttribute('data-spacer', 'true')  // Mark as spacer for explicit identification
         figure.insertAdjacentElement('afterend', newPara)
       }
       
