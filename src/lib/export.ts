@@ -30,6 +30,7 @@ export async function exportToPdf(story: Story): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 20
   const contentWidth = pageWidth - margin * 2
+  const maxImageWidth = 150 // mm
   let y = margin
 
   doc.setFontSize(24)
@@ -58,6 +59,25 @@ export async function exportToPdf(story: Story): Promise<void> {
     y += summaryLines.length * 6 + 8
   }
 
+  // Add featured image if present
+  if (story.featured_image_url) {
+    try {
+      const { imageData, width, height } = await fetchAndEncodeImage(story.featured_image_url)
+      const imgHeight = (height / width) * maxImageWidth
+      
+      if (y + imgHeight > 270) {
+        doc.addPage()
+        y = margin
+      }
+      
+      const imgX = (pageWidth - maxImageWidth) / 2
+      doc.addImage(imageData, 'JPEG', imgX, y, maxImageWidth, imgHeight)
+      y += imgHeight + 8
+    } catch (error) {
+      console.error('Failed to embed featured image:', error)
+    }
+  }
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
 
@@ -66,6 +86,37 @@ export async function exportToPdf(story: Story): Promise<void> {
       if (y > 270) {
         doc.addPage()
         y = margin
+      }
+
+      // Handle image blocks specially
+      if (block.type === 'image' && block.url) {
+        try {
+          const { imageData, width, height } = await fetchAndEncodeImage(block.url)
+          const imgHeight = (height / width) * maxImageWidth
+          
+          if (y + imgHeight > 270) {
+            doc.addPage()
+            y = margin
+          }
+          
+          const imgX = (pageWidth - maxImageWidth) / 2
+          doc.addImage(imageData, 'JPEG', imgX, y, maxImageWidth, imgHeight)
+          y += imgHeight + 2
+
+          if (block.caption) {
+            doc.setFontSize(9)
+            doc.setTextColor(100)
+            const captionLines = doc.splitTextToSize(block.caption, contentWidth)
+            doc.text(captionLines, margin, y)
+            y += captionLines.length * 4 + 6
+            doc.setTextColor(0)
+            doc.setFontSize(11)
+          }
+          continue
+        } catch (error) {
+          console.error('Failed to embed image:', error)
+          // Fall through to text representation
+        }
       }
 
       const text = blockToText(block).trim()
@@ -97,6 +148,41 @@ export async function exportToPdf(story: Story): Promise<void> {
   doc.save(`${slugify(story.title)}.pdf`)
 }
 
+/**
+ * Fetches an image from a URL and encodes it as Base64 for PDF embedding
+ */
+async function fetchAndEncodeImage(
+  imageUrl: string
+): Promise<{ imageData: string; width: number; height: number }> {
+  const response = await fetch(imageUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.statusText}`)
+  }
+
+  const blob = await response.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      // Extract dimensions from image metadata or use defaults
+      const img = new Image()
+      img.onload = () => {
+        resolve({
+          imageData: base64,
+          width: img.width,
+          height: img.height
+        })
+      }
+      img.onerror = () => {
+        reject(new Error('Failed to load image dimensions'))
+      }
+      img.src = base64
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(blob)
+  })
+}
+
 function blockToText(block: ContentBlock): string {
   switch (block.type) {
     case 'paragraph':
@@ -115,7 +201,8 @@ function blockToText(block: ContentBlock): string {
       }
       return ''
     case 'image':
-      return block.caption ? `[Image: ${block.caption}]\n\n` : '[Image]\n\n'
+      // Images are now embedded; this is only used as fallback
+      return block.caption ? `[Image: ${block.caption}]\n\n` : ''
     case 'youtube':
       return `[YouTube: ${block.url}]\n\n`
     case 'link':
