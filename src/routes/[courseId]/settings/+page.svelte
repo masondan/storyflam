@@ -388,6 +388,7 @@
       createTeamValid = null
       createTeamEditing = false
       showNotification('success', 'Team created')
+      await loadAvailableTeams()
       await loadTeamData(trimmedName)
     } catch (error) {
       console.error('Create team error:', error)
@@ -506,6 +507,7 @@
       createTeamValid = null
       confirmationAction = null
       showNotification('success', `Created team "${trimmedName}"`)
+      await loadAvailableTeams()
       await loadTeamData(trimmedName)
     } catch (error) {
       console.error('Create team error:', error)
