@@ -330,6 +330,10 @@
   }
 
   function startTeamNameEdit() {
+    if (currentTeamName) {
+      showJoinWithoutLeavingAdvisory = true
+      return
+    }
     createTeamEditing = true
     createTeamValid = null
     createTeamError = ''
@@ -1475,7 +1479,7 @@
     {#if showJoinWithoutLeavingAdvisory}
       <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-[280px]">
-          <p class="text-sm text-[#333333] mb-4">Please leave your team before joining a new team</p>
+          <p class="text-sm text-[#333333] mb-4">Please leave your current team before creating or joining a new team. If you are the only editor, assign another before leaving or close the team.</p>
           <div class="flex justify-end">
             <button
               type="button"
