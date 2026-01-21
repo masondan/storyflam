@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { supabase } from '$lib/supabase'
   import { showNotification, session } from '$lib/stores'
   import { uploadImage } from '$lib/cloudinary'
@@ -23,6 +24,7 @@
   let courseIdSaving = false
   let courseIdStep: 'initial' | 'confirm' = 'initial'
   let editedCourseId = ''
+  let dataLoaded = false
 
   const CONFIRM_WORD = 'Rudiment'
 
@@ -40,11 +42,18 @@
   }
 
   async function loadAdminData() {
-    const { data } = await supabase
+    if (!courseId) return
+    
+    const { data, error } = await supabase
       .from('newslabs')
       .select('trainer_id, course_id, guest_editor_id, fallback_image_url')
       .eq('course_id', courseId)
       .single()
+
+    if (error) {
+      console.error('[AdminTab] Failed to load admin data:', error)
+      return
+    }
 
     if (data) {
       trainerId = data.trainer_id
@@ -52,10 +61,17 @@
       editedCourseId = data.course_id
       guestEditorId = data.guest_editor_id || ''
       fallbackImageUrl = data.fallback_image_url
+      dataLoaded = true
     }
   }
 
-  loadAdminData()
+  // Load on mount
+  onMount(() => {
+    loadAdminData()
+  })
+  
+  // Also reload if courseId changes after mount
+  $: if (courseId && !dataLoaded) loadAdminData()
 
   function startTrainerIdEdit() {
     trainerIdEditing = true

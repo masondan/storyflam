@@ -10,8 +10,9 @@ export type BylineResult =
   | { success: true; isReturning: boolean; teamName?: string }
   | { success: false; error: string }
 
-// Input validation constants - allows uppercase for trainer IDs
+// Input validation constants
 const COURSE_ID_REGEX = /^[a-zA-Z0-9-]{3,20}$/
+const ID_REGEX = /^[a-zA-Z0-9_-]{2,30}$/  // More permissive for trainer/guest IDs
 const BYLINE_REGEX = /^[a-zA-Z0-9\s'-]{1,30}$/
 
 // Hardwired fallback trainer ID - always works as backup entry
@@ -48,12 +49,14 @@ export async function validateCourseId(input: string): Promise<AuthResult> {
         }
       }
       
-      // Try guest_editor_id
+      // Try guest_editor_id (case-insensitive)
       const { data: guestData, error: guestError } = await supabase
         .from('newslabs')
         .select('course_id, trainer_id, guest_editor_id')
-        .eq('guest_editor_id', trimmed)
+        .ilike('guest_editor_id', trimmed)
         .maybeSingle()
+      
+      console.log('[validateCourseId] Guest editor lookup:', { input: trimmed, guestData, guestError })
       
       if (guestData && !guestError) {
         return { 
