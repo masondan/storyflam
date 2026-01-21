@@ -250,6 +250,7 @@
           const spacer = document.createElement('p')
           spacer.className = 'mb-4'
           spacer.innerHTML = '&nbsp;'
+          spacer.setAttribute('data-spacer', 'true')  // Mark as spacer for consistent parsing
           editorElement.appendChild(spacer)
         }
       }
@@ -373,8 +374,20 @@
         const tagName = el.tagName.toLowerCase()
         
         if (tagName === 'p') {
-          // Skip spacer paragraphs (those with only &nbsp; or marked as spacer)
-          if (el.getAttribute('data-spacer') === 'true' || el.innerHTML === '&nbsp;' || el.innerHTML === '') {
+          // Check if paragraph contains an image (browsers sometimes wrap images in <p>)
+          const img = el.querySelector('img')
+          if (img) {
+            const imageUrl = img.getAttribute('src') || ''
+            if (imageUrl) {
+              blocks.push({ type: 'image', url: imageUrl })
+            }
+            return
+          }
+          
+          // Skip truly empty paragraphs (no text content at all)
+          const textContent = el.textContent?.trim() || ''
+          const innerHTML = el.innerHTML?.trim() || ''
+          if (!textContent && (innerHTML === '' || innerHTML === '&nbsp;' || innerHTML === '<br>')) {
             return
           }
           
@@ -681,15 +694,30 @@
       // Replace placeholder with actual image
       placeholder.replaceWith(figure)
       
-      // Add an empty paragraph after the figure for typing if there isn't one
+      // Always add an empty paragraph after the figure for typing
+      let newPara: HTMLParagraphElement
       const nextSibling = figure.nextSibling
       if (!nextSibling || (nextSibling.nodeType === Node.ELEMENT_NODE && (nextSibling as HTMLElement).tagName.toLowerCase() === 'figure')) {
-        const newPara = document.createElement('p')
+        newPara = document.createElement('p')
         newPara.className = 'mb-4'
-        newPara.innerHTML = '&nbsp;'  // Use &nbsp; to match renderContentToEditor spacers
-        newPara.setAttribute('data-spacer', 'true')  // Mark as spacer for explicit identification
+        newPara.innerHTML = '<br>'  // Use <br> for empty editable paragraph
         figure.insertAdjacentElement('afterend', newPara)
+      } else {
+        newPara = nextSibling as HTMLParagraphElement
       }
+      
+      // Move cursor to the paragraph after the image
+      setTimeout(() => {
+        const selection = window.getSelection()
+        if (selection && newPara) {
+          const range = document.createRange()
+          range.selectNodeContents(newPara)
+          range.collapse(true)  // Collapse to start
+          selection.removeAllRanges()
+          selection.addRange(range)
+          newPara.focus()
+        }
+      }, 0)
       
       handleEditorInput()
       scheduleAutoSave()

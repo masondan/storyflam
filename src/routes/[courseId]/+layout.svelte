@@ -10,6 +10,7 @@
   import StoryReaderDrawer from '$components/StoryReaderDrawer.svelte'
 
   let activitySubscription: ReturnType<typeof supabase.channel> | null = null
+  let courseClearedSubscription: ReturnType<typeof supabase.channel> | null = null
   let currentCourseId = ''
   let currentTeamName: string | null = null
 
@@ -22,6 +23,7 @@
   $: {
     if ($session?.courseId) {
       currentCourseId = $session.courseId
+      setupCourseClearedSubscription()
     }
     if ($session?.teamName) {
       currentTeamName = $session.teamName
@@ -31,6 +33,17 @@
       supabase.removeChannel(activitySubscription)
       activitySubscription = null
     }
+  }
+
+  function setupCourseClearedSubscription() {
+    if (!currentCourseId || courseClearedSubscription) return
+
+    courseClearedSubscription = supabase
+      .channel(`course-cleared-${currentCourseId}`)
+      .on('broadcast', { event: 'course_cleared' }, () => {
+        window.location.reload()
+      })
+      .subscribe()
   }
 
   function setupActivitySubscription() {
@@ -84,6 +97,9 @@
   onDestroy(() => {
     if (activitySubscription) {
       supabase.removeChannel(activitySubscription)
+    }
+    if (courseClearedSubscription) {
+      supabase.removeChannel(courseClearedSubscription)
     }
   })
 </script>

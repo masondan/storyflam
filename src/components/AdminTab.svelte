@@ -251,9 +251,19 @@
 
       if (teamsError) throw teamsError
 
+      // Broadcast course_cleared event to all connected clients
+      await supabase.channel(`course-cleared-${courseId}`).send({
+        type: 'broadcast',
+        event: 'course_cleared',
+        payload: {}
+      })
+
       showNotification('success', 'Course cleared successfully')
       deleteConfirmText = ''
       deleteStep = 'initial'
+
+      // Reload the trainer's page as well
+      window.location.reload()
     } catch (error) {
       console.error('Clear course error:', error)
       showNotification('error', 'Failed to clear course')
