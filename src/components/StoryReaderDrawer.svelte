@@ -4,7 +4,7 @@
   import { getOptimizedUrl } from '$lib/cloudinary'
   import type { ContentBlock } from '$lib/types'
 
-  export let teamName = 'Team NewsLab'
+  export let teamName = 'StoryFlam Publication'
   export let teamLogoUrl: string | null = null
   export let primaryColor = '5422b0'
   export let secondaryColor = 'f0e6f7'
@@ -12,7 +12,7 @@
   let scrollY = 0
   let headerOpacity = 1
 
-  $: displayTeamName = teamName || $session?.teamName || 'Team NewsLab'
+  $: displayTeamName = teamName || $session?.publicationName || 'StoryFlam Publication'
   $: storyData = $currentViewingStory?.story
   $: authorName = storyData?.author_name || 'Unknown'
   $: title = storyData?.title || ''

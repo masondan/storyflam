@@ -33,7 +33,7 @@
     
     const { data: teamInfo } = await getTeamInfo(courseId, teamNameToView)
     if (teamInfo) {
-      teamName = teamInfo.team_name
+      teamName = teamInfo.publication_name
       teamLogoUrl = teamInfo.logo_url
       primaryColor = teamInfo.primary_color
       secondaryColor = teamInfo.secondary_color

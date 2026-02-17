@@ -7,15 +7,15 @@ export type ActivityAction =
   | 'pinned'
   | 'unpinned'
   | 'deleted'
-  | 'joined_team'
-  | 'left_team'
+  | 'joined_publication'
+  | 'left_publication'
   | 'promoted_editor'
   | 'demoted_editor'
 
 export interface ActivityLogEntry {
   id: string
   course_id: string
-  team_name: string | null
+  publication_name: string | null
   journalist_name: string | null
   action: ActivityAction
   story_id: string | null
@@ -26,7 +26,7 @@ export interface ActivityLogEntry {
 
 export async function logActivity(
   courseId: string,
-  teamName: string | null,
+  publicationName: string | null,
   action: ActivityAction,
   journalistName: string | null,
   storyId?: string | null,
@@ -37,7 +37,7 @@ export async function logActivity(
     .from('activity_log')
     .insert({
       course_id: courseId,
-      team_name: teamName,
+      publication_name: publicationName,
       journalist_name: journalistName,
       action,
       story_id: storyId || null,

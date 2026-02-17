@@ -122,28 +122,28 @@ export async function validateByline(courseId: string, name: string, role: UserR
     }
     
     if (existingJournalist) {
-      // Fetch full journalist record to get team_name
+      // Fetch full journalist record to get publication_name
       const { data: fullJournalist } = await supabase
         .from('journalists')
-        .select('team_name')
+        .select('publication_name')
         .eq('id', existingJournalist.id)
         .single()
       
       return { 
         success: true, 
         isReturning: true,
-        teamName: fullJournalist?.team_name || undefined
+        teamName: fullJournalist?.publication_name || undefined
       }
     }
     
-    // Create journalist record for all roles (trainers/guest_editors need to be able to join teams too)
+    // Create journalist record for all roles (trainers/guest_editors need to be able to join publications too)
     const { error: insertError } = await supabase
       .from('journalists')
       .insert({
         course_id: courseId,
         name: trimmed,
         is_editor: false,
-        team_name: null
+        publication_name: null
       })
     
     if (insertError) {
@@ -161,12 +161,12 @@ export async function validateByline(courseId: string, name: string, role: UserR
   }
 }
 
-export function createSession(courseId: string, name: string, role: UserRole, teamName?: string): Session {
+export function createSession(courseId: string, name: string, role: UserRole, publicationName?: string): Session {
   return {
     courseId,
     name,
     role,
-    teamName: teamName || null,
+    publicationName: publicationName || null,
     sessionToken: crypto.randomUUID(),
     loginTimestamp: Date.now()
   }

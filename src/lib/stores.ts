@@ -65,7 +65,7 @@ export interface EditingStory {
   featuredImageUrl: string | null
   featuredImageCaption: string
   content: import('./types').ContentBlock[]
-  teamName: string
+  publicationName: string
   status: 'draft' | 'published'
   isDirty: boolean
   lastSaved: number | null
@@ -77,7 +77,7 @@ const emptyStory: EditingStory = {
   featuredImageUrl: null,
   featuredImageCaption: '',
   content: [],
-  teamName: '',
+  publicationName: '',
   status: 'draft',
   isDirty: false,
   lastSaved: null
@@ -91,7 +91,7 @@ function createEditingStoryStore() {
     set,
     update,
     reset: () => set({ ...emptyStory }),
-    loadStory: (story: Partial<EditingStory> & { teamName: string }) => {
+    loadStory: (story: Partial<EditingStory> & { publicationName: string }) => {
       set({
         ...emptyStory,
         ...story,
@@ -106,13 +106,13 @@ function createEditingStoryStore() {
 
 export const editingStory = createEditingStoryStore()
 
-// Team color store - derives from session's team or uses default
+// Publication color store - derives from session's publication or uses default
 export const teamColors = writable<{ primary: string; secondary: string }>({
   primary: '5422b0',
   secondary: 'f0e6f7'
 })
 
-// Color palettes available for teams
+// Color palettes available for publications
 export const COLOR_PALETTES = [
   { name: 'Indigo Bloom', primary: '5422b0', secondary: 'f0e6f7' },
   { name: 'Black Forest', primary: '02441f', secondary: 'f3fde7' },

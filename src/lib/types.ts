@@ -4,7 +4,7 @@ export interface Session {
   courseId: string
   name: string
   role: UserRole
-  teamName: string | null
+  publicationName: string | null
   sessionToken: string
   loginTimestamp: number
 }
@@ -23,16 +23,16 @@ export interface Journalist {
   id: string
   course_id: string
   name: string
-  team_name: string | null
+  publication_name: string | null
   is_editor: boolean
   created_at: string
   updated_at: string
 }
 
-export interface Team {
+export interface Publication {
   id: string
   course_id: string
-  team_name: string
+  publication_name: string
   primary_color: string
   secondary_color: string
   logo_url: string | null
@@ -46,7 +46,7 @@ export interface Team {
 export interface Story {
   id: string
   course_id: string
-  team_name: string
+  publication_name: string
   author_name: string
   title: string
   summary: string | null

@@ -63,7 +63,7 @@
         },
         (payload) => {
           const newData = payload.new as Record<string, unknown>
-          if (newData?.team_name === sessionTeamName && newData?.status === 'published') {
+          if (newData?.publication_name === sessionTeamName && newData?.status === 'published') {
             loadStories()
           } else if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') {
             loadStories()
@@ -78,7 +78,7 @@
 
     const { data } = await getTeamInfo(courseId, sessionTeamName)
     if (data) {
-      teamName = data.team_name
+      teamName = data.publication_name
       teamLogoUrl = data.logo_url
       primaryColor = data.primary_color
       secondaryColor = data.secondary_color
@@ -210,7 +210,7 @@
         featuredImageUrl: story.featured_image_url,
         featuredImageCaption: '',
         content: story.content?.blocks || [],
-        teamName: story.team_name,
+        teamName: story.publication_name,
         status: story.status
       })
       writeDrawerOpen.set(true)

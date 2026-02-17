@@ -72,7 +72,7 @@
 
     const { data } = await getTeamInfo(courseId, sessionTeamName)
     if (data) {
-      teamName = data.team_name
+      teamName = data.publication_name
       teamLogoUrl = data.logo_url
       primaryColor = data.primary_color
       secondaryColor = data.secondary_color
@@ -166,7 +166,7 @@
         featuredImageUrl: story.featured_image_url,
         featuredImageCaption: '',
         content: story.content?.blocks || [],
-        teamName: story.team_name,
+        teamName: story.publication_name,
         status: story.status
       })
       writeDrawerOpen.set(true)

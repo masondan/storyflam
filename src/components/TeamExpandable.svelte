@@ -3,14 +3,14 @@
   import { slide } from 'svelte/transition'
   import { supabase } from '$lib/supabase'
   import { showNotification } from '$lib/stores'
-  import type { Team, Journalist } from '$lib/types'
+  import type { Publication, Journalist } from '$lib/types'
   import TeamMemberItem from '$components/TeamMemberItem.svelte'
   import ColorPalette from '$components/ColorPalette.svelte'
   import TeamLogoUpload from '$components/TeamLogoUpload.svelte'
   import ShareToggle from '$components/ShareToggle.svelte'
   import TeamLockToggle from '$components/TeamLockToggle.svelte'
 
-  export let team: Team
+  export let team: Publication
   export let courseId: string
   export let expanded = false
 
@@ -43,7 +43,7 @@
       .from('journalists')
       .select('*')
       .eq('course_id', courseId)
-      .eq('team_name', team.team_name)
+      .eq('publication_name', team.publication_name)
       .order('created_at', { ascending: true })
 
     if (data) {
@@ -57,7 +57,7 @@
   }
 
   function handlePreview() {
-    dispatch('preview', { teamName: team.team_name })
+    dispatch('preview', { teamName: team.publication_name })
   }
 
   // Remove member flow (for non-self removal)
@@ -84,7 +84,7 @@
       const { error } = await supabase
         .from('journalists')
         .update({ 
-          team_name: null, 
+          publication_name: null, 
           is_editor: false,
           updated_at: new Date().toISOString()
         })
@@ -98,7 +98,7 @@
           .from('teams')
           .delete()
           .eq('course_id', courseId)
-          .eq('team_name', team.team_name)
+          .eq('publication_name', team.publication_name)
         dispatch('updated')
       } else {
         showNotification('success', `Removed ${memberName}`)
@@ -180,7 +180,7 @@
           updated_at: new Date().toISOString()
         })
         .eq('course_id', courseId)
-        .eq('team_name', team.team_name)
+        .eq('publication_name', team.publication_name)
 
       if (error) throw error
 
@@ -197,7 +197,7 @@
         .from('teams')
         .update({ logo_url: event.detail.url, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', team.team_name)
+        .eq('publication_name', team.publication_name)
 
       if (error) throw error
 
@@ -215,7 +215,7 @@
         .from('teams')
         .update({ logo_url: null, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', team.team_name)
+        .eq('publication_name', team.publication_name)
 
       if (error) throw error
 
@@ -233,7 +233,7 @@
         .from('teams')
         .update({ share_enabled: event.detail.enabled, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', team.team_name)
+        .eq('publication_name', team.publication_name)
 
       if (error) throw error
 
@@ -250,7 +250,7 @@
         .from('teams')
         .update({ team_lock: event.detail.locked, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', team.team_name)
+        .eq('publication_name', team.publication_name)
 
       if (error) throw error
 
@@ -271,7 +271,7 @@
       on:click={toggleExpand}
       class="flex-1 flex items-center justify-between bg-[#efefef] rounded-lg px-4 py-3"
     >
-      <span class="text-base font-medium text-[#333]">{team.team_name}</span>
+      <span class="text-base font-medium text-[#333]">{team.publication_name}</span>
       <img
         src={expanded ? '/icons/icon-collapse.svg' : '/icons/icon-expand.svg'}
         alt=""
@@ -365,7 +365,7 @@
       <!-- Share Toggle -->
       <ShareToggle
         enabled={team.share_enabled}
-        teamName={team.team_name}
+        teamName={team.publication_name}
         disabled={false}
         {primaryColor}
         on:toggle={handleShareToggle}

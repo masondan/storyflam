@@ -25,11 +25,11 @@
       currentCourseId = $session.courseId
       setupCourseClearedSubscription()
     }
-    if ($session?.teamName) {
-      currentTeamName = $session.teamName
+    if ($session?.publicationName) {
+      currentTeamName = $session.publicationName
       setupActivitySubscription()
     } else if (activitySubscription) {
-      // User left team, unsubscribe
+      // User left publication, unsubscribe
       supabase.removeChannel(activitySubscription)
       activitySubscription = null
     }
@@ -62,21 +62,21 @@
           event: 'INSERT',
           schema: 'public',
           table: 'activity_log',
-          filter: `course_id=eq.${currentCourseId} AND team_name=eq.${currentTeamName}`
+          filter: `course_id=eq.${currentCourseId} AND publication_name=eq.${currentTeamName}`
         },
         (payload) => {
           const activity = payload.new as ActivityLogEntry
 
-          // Show toast for team-relevant actions
-          if (activity.action === 'joined_team') {
+          // Show toast for publication-relevant actions
+          if (activity.action === 'joined_publication') {
             showNotification(
               'info',
-              `${activity.journalist_name} joined ${activity.team_name}`
+              `${activity.journalist_name} joined ${activity.publication_name}`
             )
-          } else if (activity.action === 'left_team') {
+          } else if (activity.action === 'left_publication') {
             showNotification(
               'info',
-              `${activity.journalist_name} left ${activity.team_name}`
+              `${activity.journalist_name} left ${activity.publication_name}`
             )
           } else if (activity.action === 'promoted_editor') {
             showNotification(

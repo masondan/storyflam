@@ -15,7 +15,7 @@
   let scrollY = 0
   let headerOpacity = 1
 
-  $: displayTeamName = teamName || $session?.teamName || 'Team NewsLab'
+  $: displayTeamName = teamName || $session?.publicationName || 'StoryFlam Publication'
   $: authorName = $session?.name || 'Journalist'
   $: console.log('=== PREVIEW DRAWER RECEIVED ===', { title, contentBlocks, showEmpty: !title && contentBlocks.length === 0 })
 

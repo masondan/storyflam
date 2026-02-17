@@ -3,7 +3,7 @@ import type { Story, ContentBlock } from './types'
 
 export interface StoryInput {
   courseId: string
-  teamName: string
+  publicationName: string
   authorName: string
   title: string
   summary?: string
@@ -17,7 +17,7 @@ export async function createStory(input: StoryInput): Promise<{ data: Story | nu
     .from('stories')
     .insert({
       course_id: input.courseId,
-      team_name: input.teamName,
+      publication_name: input.publicationName,
       author_name: input.authorName,
       title: input.title,
       summary: input.summary || null,
@@ -49,7 +49,7 @@ export async function updateStory(
   if (updates.featuredImageUrl !== undefined) updateData.featured_image_url = updates.featuredImageUrl
   if (updates.content !== undefined) updateData.content = updates.content
   if (updates.status !== undefined) updateData.status = updates.status
-  if (updates.teamName !== undefined) updateData.team_name = updates.teamName
+  if (updates.publicationName !== undefined) updateData.publication_name = updates.publicationName
 
   const { data, error } = await supabase
     .from('stories')
@@ -112,12 +112,12 @@ export async function getPublished(courseId: string, authorName: string): Promis
   return { data: (data || []).map(mapStory), error: null }
 }
 
-export async function getTeamStream(courseId: string, teamName: string): Promise<{ data: Story[]; error: string | null }> {
+export async function getPublicationStream(courseId: string, publicationName: string): Promise<{ data: Story[]; error: string | null }> {
   const { data, error } = await supabase
     .from('stories')
     .select('*')
     .eq('course_id', courseId)
-    .eq('team_name', teamName)
+    .eq('publication_name', publicationName)
     .eq('status', 'published')
     .order('is_pinned', { ascending: false })
     .order('pin_timestamp', { ascending: false, nullsFirst: false })
@@ -129,6 +129,9 @@ export async function getTeamStream(courseId: string, teamName: string): Promise
 
   return { data: (data || []).map(mapStory), error: null }
 }
+
+// Legacy alias for backwards compatibility
+export const getTeamStream = getPublicationStream
 
 export async function deleteStory(id: string): Promise<{ error: string | null }> {
   const { error } = await supabase
@@ -181,13 +184,13 @@ export async function unpublishStory(id: string): Promise<{ data: Story | null; 
   return { data: mapStory(data), error: null }
 }
 
-export async function pinStory(id: string, courseId: string, teamName: string): Promise<{ data: Story | null; error: string | null }> {
+export async function pinStory(id: string, courseId: string, publicationName: string): Promise<{ data: Story | null; error: string | null }> {
   // First, check how many stories are already pinned
   const { data: pinnedStories, error: fetchError } = await supabase
     .from('stories')
     .select('id, pin_timestamp')
     .eq('course_id', courseId)
-    .eq('team_name', teamName)
+    .eq('publication_name', publicationName)
     .eq('is_pinned', true)
     .order('pin_timestamp', { ascending: true })
 
@@ -247,22 +250,22 @@ export async function unpinStory(id: string): Promise<{ data: Story | null; erro
   return { data: mapStory(data), error: null }
 }
 
-export async function getTeamInfo(courseId: string, teamName: string): Promise<{ 
-  data: { primary_color: string; secondary_color: string; logo_url: string | null; team_name: string } | null; 
+export async function getPublicationInfo(courseId: string, publicationName: string): Promise<{ 
+  data: { primary_color: string; secondary_color: string; logo_url: string | null; publication_name: string } | null; 
   error: string | null 
 }> {
   const { data, error } = await supabase
-    .from('teams')
-    .select('team_name, primary_color, secondary_color, logo_url')
+    .from('publications')
+    .select('publication_name, primary_color, secondary_color, logo_url')
     .eq('course_id', courseId)
-    .eq('team_name', teamName)
+    .eq('publication_name', publicationName)
     .single()
 
   if (error) {
-    // Return defaults if team not found
+    // Return defaults if publication not found
     return { 
       data: { 
-        team_name: teamName || 'Team NewsLab', 
+        publication_name: publicationName || 'StoryFlam Publication', 
         primary_color: '5422b0', 
         secondary_color: 'f0e6f7', 
         logo_url: null 
@@ -273,6 +276,9 @@ export async function getTeamInfo(courseId: string, teamName: string): Promise<{
 
   return { data, error: null }
 }
+
+// Legacy alias for backwards compatibility
+export const getTeamInfo = getPublicationInfo
 
 export async function getFallbackImageUrl(courseId: string): Promise<string | null> {
   const { data, error } = await supabase
@@ -395,7 +401,7 @@ function mapStory(row: Record<string, unknown>): Story {
   return {
     id: row.id as string,
     course_id: row.course_id as string,
-    team_name: row.team_name as string,
+    publication_name: row.publication_name as string,
     author_name: row.author_name as string,
     title: row.title as string,
     summary: row.summary as string | null,

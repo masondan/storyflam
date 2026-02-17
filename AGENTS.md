@@ -66,7 +66,7 @@
 | Team stream | `src/routes/[courseId]/stream/+page.svelte` |
 | Settings | `src/routes/[courseId]/settings/+page.svelte` |
 | Public share | `src/routes/share/[teamName]/+page.svelte` |
-| Main editor | `src/components/WriteDrawer.svelte` (1336 lines) |
+| Main editor | `src/components/WriteDrawer.svelte` (1478 lines) |
 
 ### Common Patterns for AI Agents
 
@@ -94,14 +94,38 @@ showNotification(error ? 'error' : 'success', error || 'Saved')
 **Pattern 4: Subscribe to Realtime Changes**
 ```typescript
 const subscription = supabase
-  .from('stories')
-  .on('*', (payload) => {
-    if (payload.new.course_id === courseId) {
-      // Handle update/insert/delete
+  .channel('channel-name')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'stories', filter: `course_id=eq.${courseId}` },
+    (payload) => {
+      if (payload.new.course_id === courseId) {
+        // Handle update/insert/delete
+      }
     }
-  })
+  )
   .subscribe()
-// Cleanup: subscription.unsubscribe()
+// Cleanup: supabase.removeChannel(subscription)
+```
+
+**Pattern 5: Detect Mobile Keyboard with visualViewport**
+```typescript
+// Used in WriteDrawer for toolbar positioning above keyboard on mobile
+function handleViewportResize() {
+  if (!window.visualViewport) return
+  
+  const viewport = window.visualViewport
+  const windowHeight = window.innerHeight
+  const viewportHeight = viewport.height
+  
+  // Keyboard is visible when viewport height is significantly less than window height
+  const heightDiff = windowHeight - viewportHeight
+  isKeyboardVisible = heightDiff > 100
+  keyboardHeight = isKeyboardVisible ? heightDiff : 0
+}
+
+// Call on visualViewport resize event
+window.visualViewport?.addEventListener('resize', handleViewportResize)
 ```
 
 ---
@@ -180,6 +204,7 @@ CREATE TABLE teams (
   logo_url TEXT,                                    -- Cloudinary URL, square image
   public_share_token TEXT UNIQUE,                   -- UUID for public read-only URL
   share_enabled BOOLEAN DEFAULT FALSE,              -- Toggle public sharing on/off
+  team_lock BOOLEAN,                                -- Optional lock flag for team settings
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(course_id, team_name),
@@ -309,6 +334,10 @@ CREATE INDEX idx_activity_created ON activity_log(created_at DESC);
   loginTimestamp: 1703001600000
 }
 ```
+
+### Session Validation Notes
+- **Journalists**: Session is validated against `journalists` table during login; record created if new
+- **Trainers/Guest Editors**: Session is valid on any login attempt; no ongoing server-side validation of trainer/guest editor passwords after initial validation
 
 ### Login Flow (Steps 1-2)
 
@@ -448,14 +477,15 @@ if (lockStatus.isExpired) {
 
 ### Lock Refresh
 ```typescript
-// Refresh lock every 3 minutes to keep it alive during long edits
+// Refresh lock every 60 seconds (client-side) to keep it alive during long edits
 const { error } = await refreshLock(storyId, currentUserName)
 ```
 
 **Implementation:**
 - Updates `locked_at` timestamp without changing `locked_by`
 - Ensures lock doesn't expire during active editing
-- Should be called on a 3-minute interval (see WriteDrawer.svelte for pattern)
+- Client calls refresh every 60 seconds during editing session (see WriteDrawer.svelte for pattern)
+- Server-side lock timeout is 5 minutes; client refresh keeps it fresh if editing continues
 
 ### Lock Release
 ```typescript
@@ -705,7 +735,8 @@ export const currentViewingStory
 ```typescript
 export const editingStory
 // Methods: .set(story), .loadStory(partial), .markDirty(), .markSaved(), .reset()
-// Tracks: isDirty, lastSaved, all content fields
+// Tracks: id, title, summary, featuredImageUrl, featuredImageCaption, content, teamName, status, isDirty, lastSaved
+// featured_image_caption stores caption text for the featured image
 ```
 
 **Team Colors:**
@@ -1011,6 +1042,18 @@ async function uploadImage(file) {
     publicId: data.public_id
   }
 }
+```
+
+### Image Optimization Functions
+```typescript
+// Get optimized image URL with transformations
+getOptimizedUrl(url: string, width: number = 800): string
+// Adds Cloudinary transformation: w_800,q_auto,f_auto (width, quality, format)
+
+// Get thumbnail (square crop for story cards)
+getThumbnailUrl(url: string, size: number = 300): string
+// Adds Cloudinary transformation: w_300,h_300,c_fill,q_auto,f_auto
+// Returns 300x300px square, auto quality and format
 ```
 
 ---

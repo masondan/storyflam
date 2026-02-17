@@ -4,7 +4,7 @@
   import { session, showNotification, teamColors, isTrainer, isGuestEditor } from '$lib/stores'
   import { supabase } from '$lib/supabase'
   import { logActivity } from '$lib/activity'
-  import type { Team, Journalist } from '$lib/types'
+  import type { Publication, Journalist } from '$lib/types'
   import ConfirmationToolbar from '$components/ConfirmationToolbar.svelte'
   import ColorPalette from '$components/ColorPalette.svelte'
   import TeamMemberItem from '$components/TeamMemberItem.svelte'
@@ -37,14 +37,14 @@
   let createTeamSaving = false
 
   // Join team state (inline toolbar)
-  let availableTeams: Team[] = []
+  let availableTeams: Publication[] = []
   let joiningTeamId: string | null = null
   let joiningTeamName: string | null = null
   let joiningTeamLocked = false
   let isJoiningTeam = false
 
   // Team data
-  let team: Team | null = null
+  let team: Publication | null = null
   let teamMembers: Journalist[] = []
   let currentUserIsEditor = false
 
@@ -160,7 +160,7 @@
       .from('teams')
       .select('*')
       .eq('course_id', courseId)
-      .eq('team_name', teamToLoad)
+      .eq('publication_name', teamToLoad)
       .single()
 
     if (teamData) {
@@ -179,7 +179,7 @@
       .from('journalists')
       .select('*')
       .eq('course_id', courseId)
-      .eq('team_name', teamToLoad)
+      .eq('publication_name', teamToLoad)
       .order('created_at', { ascending: true })
 
     if (data) {
@@ -316,7 +316,7 @@
       .from('teams')
       .select('id')
       .eq('course_id', courseId)
-      .eq('team_name', createTeamInput.trim())
+      .eq('publication_name', createTeamInput.trim())
 
     createTeamValidating = false
 
@@ -402,15 +402,15 @@
     }
   }
 
-  function openJoinTeamConfirmation(team: Team) {
+  function openJoinTeamConfirmation(team: Publication) {
     // Check if journalist is already in a different team
-    if (currentTeamName && currentTeamName !== team.team_name) {
+    if (currentTeamName && currentTeamName !== team.publication_name) {
       showJoinWithoutLeavingAdvisory = true
       return
     }
 
     joiningTeamId = team.id
-    joiningTeamName = team.team_name
+    joiningTeamName = team.publication_name
     joiningTeamLocked = team.team_lock ?? false
   }
 
@@ -450,7 +450,7 @@
       showNotification('success', `Joined "${joinedName}"`)
       
       // Log the join activity
-      await logActivity(courseId, joinedName, 'joined_team', currentUserName)
+      await logActivity(courseId, joinedName, 'joined_publication', currentUserName)
       
       await loadTeamData(joinedName)
     } catch (error) {
@@ -545,11 +545,11 @@
           .from('teams')
           .delete()
           .eq('course_id', courseId)
-          .eq('team_name', currentTeamName)
+          .eq('publication_name', currentTeamName)
       }
 
       // Log the leave activity
-      await logActivity(courseId, currentTeamName, 'left_team', memberToRemove)
+      await logActivity(courseId, currentTeamName, 'left_publication', memberToRemove)
 
       if (memberToRemove === currentUserName) {
         session.set({
@@ -614,7 +614,7 @@
           .from('teams')
           .delete()
           .eq('course_id', courseId)
-          .eq('team_name', currentTeamName)
+          .eq('publication_name', currentTeamName)
       }
 
       session.set({
@@ -756,7 +756,7 @@
           updated_at: new Date().toISOString()
         })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (error) throw error
 
@@ -776,7 +776,7 @@
         .from('teams')
         .update({ logo_url: event.detail.url, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (error) throw error
 
@@ -796,7 +796,7 @@
         .from('teams')
         .update({ logo_url: null, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (error) throw error
 
@@ -816,7 +816,7 @@
         .from('teams')
         .update({ share_enabled: event.detail.enabled, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (error) throw error
 
@@ -835,7 +835,7 @@
         .from('teams')
         .update({ team_lock: event.detail.locked, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (error) throw error
 
@@ -858,7 +858,7 @@
         .from('stories')
         .update({ status: 'draft', updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
         .eq('status', 'published')
 
       if (updateStoriesError) throw updateStoriesError
@@ -868,16 +868,16 @@
         .from('teams')
         .delete()
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (deleteTeamError) throw deleteTeamError
 
       // Remove team from all members
       const { error: updateJournalistsError } = await supabase
         .from('journalists')
-        .update({ team_name: null, is_editor: false, updated_at: new Date().toISOString() })
+        .update({ publication_name: null, is_editor: false, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
-        .eq('team_name', currentTeamName)
+        .eq('publication_name', currentTeamName)
 
       if (updateJournalistsError) throw updateJournalistsError
 
@@ -1202,13 +1202,13 @@
                   <div>
                     <button
                       type="button"
-                      on:click={() => availTeam.team_name !== currentTeamName && joiningTeamId !== availTeam.id && openJoinTeamConfirmation(availTeam)}
+                      on:click={() => availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id && openJoinTeamConfirmation(availTeam)}
                       class="w-full flex items-center justify-between py-3 text-left transition-colors border-b border-[#e0e0e0]"
-                      class:hover:bg-[#f5f5f5]={availTeam.team_name !== currentTeamName && joiningTeamId !== availTeam.id}
-                      class:cursor-default={availTeam.team_name === currentTeamName || joiningTeamId === availTeam.id}
+                      class:hover:bg-[#f5f5f5]={availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id}
+                      class:cursor-default={availTeam.publication_name === currentTeamName || joiningTeamId === availTeam.id}
                     >
-                      <span class="text-base text-[#333333]">{availTeam.team_name}</span>
-                      {#if availTeam.team_name === currentTeamName}
+                      <span class="text-base text-[#333333]">{availTeam.publication_name}</span>
+                      {#if availTeam.publication_name === currentTeamName}
                         <img
                           src="/icons/icon-check-fill.svg"
                           alt="Current team"

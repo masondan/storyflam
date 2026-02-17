@@ -3,9 +3,9 @@
   import { page } from '$app/stores'
   import { supabase } from '$lib/supabase'
   import { getOptimizedUrl, getThumbnailUrl } from '$lib/cloudinary'
-  import type { Team, Story, ContentBlock } from '$lib/types'
+  import type { Publication, Story, ContentBlock } from '$lib/types'
 
-  let team: Team | null = null
+  let team: Publication | null = null
   let stories: Story[] = []
   let loading = true
   let error = ''
@@ -50,7 +50,7 @@
       .from('stories')
       .select('*')
       .eq('course_id', teamData.course_id)
-      .eq('team_name', teamData.team_name)
+      .eq('publication_name', teamData.team_name)
       .eq('status', 'published')
       .order('is_pinned', { ascending: false })
       .order('pin_timestamp', { ascending: false, nullsFirst: false })
@@ -126,8 +126,8 @@
 </script>
 
 <svelte:head>
-  <title>{team?.team_name || 'Team Stream'} | NewsLab</title>
-  <meta name="description" content="Published stories from {team?.team_name || 'this team'}" />
+  <title>{team?.publication_name || 'Publication Stream'} | StoryFlam</title>
+  <meta name="description" content="Published stories from {team?.publication_name || 'this publication'}" />
 </svelte:head>
 
 {#if loading}
@@ -175,7 +175,7 @@
         />
       </div>
       <h1 class="text-base font-semibold" style="color: #{primaryColor};">
-        {team?.team_name}
+        {team?.publication_name}
       </h1>
     </header>
 
@@ -224,7 +224,7 @@
         />
       </div>
       <h1 class="text-xl font-bold" style="color: #{primaryColor};">
-        {team?.team_name}
+        {team?.publication_name}
       </h1>
     </header>
 

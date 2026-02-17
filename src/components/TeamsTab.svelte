@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import { supabase } from '$lib/supabase'
-  import type { Team } from '$lib/types'
+  import type { Publication } from '$lib/types'
   import TeamExpandable from '$components/TeamExpandable.svelte'
   import TeamStreamDrawer from '$components/TeamStreamDrawer.svelte'
 
   export let courseId: string
 
-  let teams: Team[] = []
+  let teams: Publication[] = []
   let loading = true
   let expandedTeamId: string | null = null
 

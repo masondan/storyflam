@@ -57,7 +57,7 @@
   let toolbarBottomPosition = 0
 
   $: wordCount = countWords()
-  $: canPublish = title.trim().length > 0 && !!$session?.teamName
+  $: canPublish = title.trim().length > 0 && !!$session?.publicationName
   $: isEditingExisting = !!$editingStory.id
   $: isPublishedStory = $editingStory.status === 'published'
 
@@ -551,7 +551,7 @@
       summary: '',
       featuredImageUrl,
       content: { blocks: contentBlocks },
-      teamName: $session.teamName || 'Unassigned'
+      publicationName: $session.publicationName || 'Unassigned'
     }
 
     let storyId: string | null = $editingStory.id || null
@@ -564,7 +564,7 @@
       } else {
         const result = await createStory({
           courseId: $session.courseId,
-          teamName: $session.teamName || 'Unassigned',
+          publicationName: $session.publicationName || 'Unassigned',
           authorName: $session.name,
           title,
           summary: '',
@@ -1008,7 +1008,7 @@
     if ($session) {
       await logActivity(
         $session.courseId,
-        $session.teamName,
+        $session.publicationName,
         'published',
         $session.name,
         storyId,
@@ -1034,7 +1034,7 @@
     if ($session && isEditingExisting) {
       await logActivity(
         $session.courseId,
-        $session.teamName,
+        $session.publicationName,
         'edited',
         $session.name,
         storyId,
