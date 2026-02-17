@@ -142,7 +142,7 @@
     if (!courseId) return
 
     const { data } = await supabase
-      .from('teams')
+      .from('publications')
       .select('*')
       .eq('course_id', courseId)
       .order('created_at', { ascending: false })
@@ -157,7 +157,7 @@
     if (!teamToLoad || !courseId) return
 
     const { data: teamData } = await supabase
-      .from('teams')
+      .from('publications')
       .select('*')
       .eq('course_id', courseId)
       .eq('publication_name', teamToLoad)
@@ -313,7 +313,7 @@
     }
 
     const { data } = await supabase
-      .from('teams')
+      .from('publications')
       .select('id')
       .eq('course_id', courseId)
       .eq('publication_name', createTeamInput.trim())
@@ -362,10 +362,10 @@
       const shareToken = crypto.randomUUID()
 
       const { error: teamError } = await supabase
-        .from('teams')
+        .from('publications')
         .insert({
           course_id: courseId,
-          team_name: trimmedName,
+          publication_name: trimmedName,
           public_share_token: shareToken
         })
 
@@ -374,7 +374,7 @@
       const { error: journalistError } = await supabase
         .from('journalists')
         .update({
-          team_name: trimmedName,
+          publication_name: trimmedName,
           is_editor: true,
           updated_at: new Date().toISOString()
         })
@@ -385,7 +385,7 @@
 
       session.set({
         ...$session!,
-        teamName: trimmedName
+        publicationName: trimmedName
       })
 
       createTeamInput = ''
@@ -481,7 +481,7 @@
       const shareToken = crypto.randomUUID()
 
       const { error: teamError } = await supabase
-        .from('teams')
+        .from('publications')
         .insert({
           course_id: courseId,
           team_name: trimmedName,
@@ -542,7 +542,7 @@
 
       if (teamMembers.length === 1) {
         await supabase
-          .from('teams')
+          .from('publications')
           .delete()
           .eq('course_id', courseId)
           .eq('publication_name', currentTeamName)
@@ -611,7 +611,7 @@
 
       if (teamMembers.length === 1) {
         await supabase
-          .from('teams')
+          .from('publications')
           .delete()
           .eq('course_id', courseId)
           .eq('publication_name', currentTeamName)
@@ -749,7 +749,7 @@
 
     try {
       const { error } = await supabase
-        .from('teams')
+        .from('publications')
         .update({ 
           primary_color: primary, 
           secondary_color: secondary,
@@ -773,7 +773,7 @@
 
     try {
       const { error } = await supabase
-        .from('teams')
+        .from('publications')
         .update({ logo_url: event.detail.url, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
         .eq('publication_name', currentTeamName)
@@ -793,7 +793,7 @@
 
     try {
       const { error } = await supabase
-        .from('teams')
+        .from('publications')
         .update({ logo_url: null, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
         .eq('publication_name', currentTeamName)
@@ -813,7 +813,7 @@
 
     try {
       const { error } = await supabase
-        .from('teams')
+        .from('publications')
         .update({ share_enabled: event.detail.enabled, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
         .eq('publication_name', currentTeamName)
@@ -832,7 +832,7 @@
 
     try {
       const { error } = await supabase
-        .from('teams')
+        .from('publications')
         .update({ team_lock: event.detail.locked, updated_at: new Date().toISOString() })
         .eq('course_id', courseId)
         .eq('publication_name', currentTeamName)
@@ -865,7 +865,7 @@
 
       // Delete the team
       const { error: deleteTeamError } = await supabase
-        .from('teams')
+        .from('publications')
         .delete()
         .eq('course_id', courseId)
         .eq('publication_name', currentTeamName)
