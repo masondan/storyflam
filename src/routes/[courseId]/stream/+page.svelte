@@ -246,7 +246,7 @@
   >
     <div class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden bg-white border-2" style="border-color: #{primaryColor};">
       <img
-        src={teamLogoUrl || '/icons/logo-teamstream-fallback.png'}
+        src={teamLogoUrl || '/logos/logo-storyflam-gen.svg'}
         alt="Team logo"
         class="w-full h-full object-cover"
       />

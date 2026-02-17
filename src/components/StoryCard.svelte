@@ -71,7 +71,7 @@
       }
     }
     
-    return fallbackImageUrl || '/icons/logo-teamstream-fallback.png'
+    return fallbackImageUrl || '/logos/logo-storyflam-gen.svg'
   }
   
   // Extract body text snippet from content blocks if no summary

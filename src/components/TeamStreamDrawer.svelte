@@ -100,7 +100,7 @@
         class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden"
       >
         <img
-          src={teamLogoUrl || '/icons/logo-teamstream-fallback.png'}
+          src={teamLogoUrl || '/logos/logo-storyflam-gen.svg'}
           alt="Team logo"
           class="w-full h-full object-cover"
         />

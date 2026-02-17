@@ -118,8 +118,8 @@
   <!-- Logo - centered -->
   <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
     <img
-      src="/icons/logo-textlogo-white.png"
-      alt="NewsLab"
+      src="/logos/logo-storyflam-logotype-white.png"
+      alt="StoryFlam"
       class="h-12 w-auto"
     />
   </div>

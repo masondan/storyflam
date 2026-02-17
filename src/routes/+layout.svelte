@@ -32,8 +32,8 @@
     {#if isValidating}
       <div class="min-h-screen bg-accent-brand flex items-center justify-center rounded-lg">
         <img 
-          src="/icons/logo-textlogo-white.png" 
-          alt="NewsLab" 
+          src="/logos/logo-storyflam-logotype-white.png" 
+          alt="StoryFlam" 
           class="h-12 w-auto animate-pulse"
         />
       </div>

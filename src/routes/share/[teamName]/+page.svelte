@@ -137,8 +137,8 @@
 {:else if error}
   <div class="min-h-screen flex flex-col items-center justify-center bg-white px-4">
     <img
-      src="/icons/logo-teamstream-fallback.png"
-      alt="NewsLab"
+      src="/logos/logo-storyflam-gen.svg"
+      alt="StoryFlam"
       class="w-16 h-16 mb-4 opacity-50"
     />
     <p class="text-[#777777] text-lg">{error}</p>
@@ -169,8 +169,8 @@
         style="border-color: #{primaryColor};"
       >
         <img
-          src={team?.logo_url || '/icons/logo-teamstream-fallback.png'}
-          alt="Team logo"
+          src={team?.logo_url || '/logos/logo-storyflam-gen.svg'}
+          alt="Publication logo"
           class="w-full h-full object-cover"
         />
       </div>
@@ -218,8 +218,8 @@
         style="border-color: #{primaryColor};"
       >
         <img
-          src={team?.logo_url || '/icons/logo-teamstream-fallback.png'}
-          alt="Team logo"
+          src={team?.logo_url || '/logos/logo-storyflam-gen.svg'}
+          alt="Publication logo"
           class="w-full h-full object-cover"
         />
       </div>
@@ -246,7 +246,7 @@
                 <img
                   src={story.featured_image_url 
                     ? getThumbnailUrl(story.featured_image_url, 160) 
-                    : '/icons/logo-teamstream-fallback.png'}
+                    : '/logos/logo-storyflam-gen.svg'}
                   alt=""
                   class="w-full h-full object-cover"
                 />

@@ -74,7 +74,7 @@
 
   $: courseId = $session?.courseId || ''
   $: currentUserName = $session?.name || ''
-  $: currentTeamName = $session?.teamName || null
+  $: currentTeamName = $session?.publicationName || null
   $: primaryColor = team?.primary_color || '5422b0'
   $: secondaryColor = team?.secondary_color || 'f0e6f7'
   $: showTeamsTab = $isTrainer || $isGuestEditor
@@ -86,7 +86,7 @@
 
     await loadAvailableTeams()
     
-    if ($session?.teamName) {
+    if ($session?.publicationName) {
       await loadTeamData()
     }
 
@@ -429,7 +429,7 @@
       const { error } = await supabase
         .from('journalists')
         .update({
-          team_name: joiningTeamName,
+          publication_name: joiningTeamName,
           is_editor: false,
           updated_at: new Date().toISOString()
         })
@@ -440,7 +440,7 @@
 
       session.set({
         ...$session!,
-        teamName: joiningTeamName
+        publicationName: joiningTeamName
       })
 
       const joinedName = joiningTeamName
@@ -484,7 +484,7 @@
         .from('publications')
         .insert({
           course_id: courseId,
-          team_name: trimmedName,
+          publication_name: trimmedName,
           public_share_token: shareToken
         })
 
@@ -493,7 +493,7 @@
       const { error: journalistError } = await supabase
         .from('journalists')
         .update({
-          team_name: trimmedName,
+          publication_name: trimmedName,
           is_editor: true,
           updated_at: new Date().toISOString()
         })
@@ -504,7 +504,7 @@
 
       session.set({
         ...$session!,
-        teamName: trimmedName
+        publicationName: trimmedName
       })
 
       createTeamInput = ''
@@ -554,7 +554,7 @@
       if (memberToRemove === currentUserName) {
         session.set({
           ...$session!,
-          teamName: null
+          publicationName: null
         })
         team = null
         teamMembers = []
@@ -619,7 +619,7 @@
 
       session.set({
         ...$session!,
-        teamName: null
+        publicationName: null
       })
       team = null
       teamMembers = []
@@ -884,7 +884,7 @@
       // Update session if current user was in this team
       session.set({
         ...$session!,
-        teamName: null
+        publicationName: null
       })
 
       team = null
