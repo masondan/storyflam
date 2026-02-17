@@ -261,7 +261,7 @@
       if (journalistsError) throw journalistsError
 
       const { error: teamsError } = await supabase
-        .from('teams')
+        .from('publications')
         .delete()
         .eq('course_id', courseId)
 
