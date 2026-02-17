@@ -99,14 +99,25 @@
       <div 
         class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden"
       >
-        <img
-          src={teamLogoUrl || '/logos/logo-storyflam-gen.svg'}
-          alt="Team logo"
-          class="w-full h-full object-cover"
-        />
+        {#if teamLogoUrl}
+          <img
+            src={teamLogoUrl}
+            alt="Publication logo"
+            class="w-full h-full object-cover"
+          />
+        {:else}
+          <div style="width: 100%; height: 100%; background-color: #efefef; display: flex; align-items: center; justify-content: center;">
+            <img
+              src="/icons/icon-storyflam-quill.svg"
+              alt=""
+              class="w-10 h-10"
+              style="filter: invert(100%) brightness(0.6);"
+            />
+          </div>
+        {/if}
       </div>
       <h1 class="text-lg font-semibold text-[#1f1f1f]">
-        {teamName || teamNameToView || 'Team NewsLab'}
+        {teamName || teamNameToView || 'Publication Name'}
       </h1>
     </header>
 

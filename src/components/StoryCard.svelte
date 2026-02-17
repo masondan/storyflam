@@ -54,6 +54,25 @@
     dispatch('select', { id: story.id, selected: !selected })
   }
 
+  // Check if story has an image (featured or in content)
+  function hasImage(): boolean {
+    if (story.featured_image_url) {
+      return true
+    }
+    
+    const blocks = story.content?.blocks || []
+    for (const block of blocks) {
+      if (block.type === 'image' && block.url) {
+        return true
+      }
+      if (block.type === 'youtube' && block.thumbnailUrl) {
+        return true
+      }
+    }
+    
+    return !!fallbackImageUrl
+  }
+
   // Extract thumbnail from featured image or first image in content
   function getThumbnail(): string {
     if (story.featured_image_url) {
@@ -104,12 +123,21 @@
     tabindex="0"
   >
     <!-- Thumbnail -->
-    <div class="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-[#efefef]">
-      <img
-        src={thumbnailSrc}
-        alt=""
-        class="w-full h-full object-cover"
-      />
+    <div class="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-[#efefef] flex items-center justify-center">
+      {#if hasImage()}
+        <img
+          src={thumbnailSrc}
+          alt=""
+          class="w-full h-full object-cover"
+        />
+      {:else}
+        <img
+          src="/icons/icon-storyflam-quill.svg"
+          alt=""
+          class="w-12 h-12"
+          style="filter: invert(100%) brightness(0.6);"
+        />
+      {/if}
     </div>
 
     <!-- Content -->

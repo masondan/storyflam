@@ -239,20 +239,31 @@
 </svelte:head>
 
 <div class="min-h-screen bg-white flex flex-col pb-[70px]">
-  <!-- Team Header -->
+  <!-- Publication Header -->
   <header 
     class="py-6 text-center border-b-2 mb-6"
     style="background-color: #{secondaryColor}; border-color: #{primaryColor};"
   >
-    <div class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden bg-white border-2" style="border-color: #{primaryColor};">
-      <img
-        src={teamLogoUrl || '/logos/logo-storyflam-gen.svg'}
-        alt="Team logo"
-        class="w-full h-full object-cover"
-      />
+    <div class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden border-2" style="border-color: #{primaryColor};">
+      {#if teamLogoUrl}
+        <img
+          src={teamLogoUrl}
+          alt="Publication logo"
+          class="w-full h-full object-cover"
+        />
+      {:else}
+        <div style="width: 100%; height: 100%; background-color: #efefef; display: flex; align-items: center; justify-content: center;">
+          <img
+            src="/icons/icon-storyflam-quill.svg"
+            alt=""
+            class="w-10 h-10"
+            style="filter: invert(100%) brightness(0.6);"
+          />
+        </div>
+      {/if}
     </div>
     <h1 class="text-lg font-semibold" style="color: #{primaryColor};">
-      {teamName || sessionTeamName || 'Team NewsLab'}
+      {teamName || sessionTeamName || 'Publication Name'}
     </h1>
   </header>
 
@@ -261,10 +272,9 @@
     {#if !sessionTeamName}
       <div class="flex items-center justify-center h-full">
         <div class="text-center">
-          <p class="text-[#777777] text-base">No team yet.</p>
-          <p class="text-[#999999] text-sm mt-2">
-            Join or create a team in Settings<br />
-            to see your Team Stream.
+          <p class="text-[#999999] text-sm">
+            Create or join a publication to<br />
+            see your published stories here
           </p>
         </div>
       </div>

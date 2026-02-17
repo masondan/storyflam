@@ -338,12 +338,12 @@
           <p class="text-[#777777] text-base">Nothing to show yet.</p>
           {#if activeTab === 'drafts'}
             <p class="text-[#999999] text-sm mt-2">
-              Your drafts appear here.<br />To publish a story, create<br />or join a team in settings
+              Your drafts appear here.<br />To publish a story, create<br />or join a publication in settings
             </p>
           {:else}
             <p class="text-[#999999] text-sm mt-2">
               Published stories appear here<br />
-              and in your Team Stream.
+              and in your publication.
             </p>
           {/if}
         </div>
