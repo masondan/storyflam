@@ -25,7 +25,7 @@
   let storiesSubscription: ReturnType<typeof supabase.channel> | null = null
 
   $: courseId = $session?.courseId || ''
-  $: sessionTeamName = $session?.teamName || null
+  $: sessionTeamName = $session?.publicationName || null
   $: userRole = $session?.role || 'journalist'
   $: canEdit = currentUserIsEditor || userRole === 'trainer' || userRole === 'guest_editor'
 
