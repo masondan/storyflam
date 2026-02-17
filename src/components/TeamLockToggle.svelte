@@ -15,7 +15,7 @@
 
 <div class="space-y-3">
   <div class="flex items-center justify-between pb-1 border-b border-[#e0e0e0]">
-    <span class="text-sm text-[#777777]">Team lock</span>
+    <span class="text-sm text-[#777777]">Lock publication</span>
 
     <button
       type="button"
@@ -36,5 +36,5 @@
     </button>
   </div>
 
-  <p class="text-sm text-[#999999]">This prevents others from joining your group.</p>
+  <p class="text-sm text-[#999999]">This prevents others from joining your publication.</p>
 </div>

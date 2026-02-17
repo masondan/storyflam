@@ -11,10 +11,9 @@
   import TeamLogoUpload from '$components/TeamLogoUpload.svelte'
   import ShareToggle from '$components/ShareToggle.svelte'
   import TeamLockToggle from '$components/TeamLockToggle.svelte'
-  import TeamsTab from '$components/TeamsTab.svelte'
-  import AdminTab from '$components/AdminTab.svelte'
+  import CombinedAdminTab from '$components/CombinedAdminTab.svelte'
 
-  type TabType = 'settings' | 'teams' | 'admin'
+  type TabType = 'settings' | 'admin'
   type ConfirmationAction = null | 'create-team' | 'leave-team' | 'make-editor'
 
   let activeTab: TabType = 'settings'
@@ -77,8 +76,7 @@
   $: currentTeamName = $session?.publicationName || null
   $: primaryColor = team?.primary_color || '5422b0'
   $: secondaryColor = team?.secondary_color || 'f0e6f7'
-  $: showTeamsTab = $isTrainer || $isGuestEditor
-  $: showAdminTab = $isTrainer
+  $: showAdminTab = $isTrainer || $isGuestEditor
 
   onMount(async () => {
     bylineName = $session?.name || ''
@@ -925,7 +923,7 @@
 </script>
 
 <svelte:head>
-  <title>NewsLab - Settings</title>
+  <title>StoryFlam | Settings</title>
 </svelte:head>
 
 <div class="relative min-h-screen bg-white flex flex-col pb-[60px]">
@@ -942,19 +940,6 @@
       >
         Settings
       </button>
-      
-      {#if showTeamsTab}
-        <button
-          type="button"
-          on:click={() => activeTab = 'teams'}
-          class="text-xl font-semibold transition-colors pb-1 border-b-2"
-          class:text-[#777777]={activeTab !== 'teams'}
-          class:border-transparent={activeTab !== 'teams'}
-          style={activeTab === 'teams' ? `color: #${primaryColor}; border-bottom-color: #${primaryColor};` : ''}
-        >
-          Teams
-        </button>
-      {/if}
       
       {#if showAdminTab}
         <button
@@ -1085,7 +1070,7 @@
               <!-- Left column: label, input, helper text -->
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-2">
-                  <label for="create-team-input" class="text-sm text-[#777777]">Create team</label>
+                  <label for="create-team-input" class="text-sm text-[#777777]">Create Publication</label>
                   <span class="text-xs text-[#999999]">{createTeamInput.length} / 30</span>
                 </div>
                 
@@ -1171,7 +1156,7 @@
                     class="transition-opacity"
                     class:opacity-50={createTeamValid !== true || createTeamInput.trim().length === 0 || createTeamSaving}
                   >
-                    {createTeamSaving ? 'Creating...' : 'Create team'}
+                    {createTeamSaving ? 'Creating...' : 'Create Publication'}
                   </button>
                   <span class="mx-3 opacity-60">|</span>
                   <button
@@ -1186,10 +1171,10 @@
             {/if}
           </div>
 
-        <!-- Teams Section -->
+        <!-- Publications Section -->
         <div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-[#777777]">Teams</span>
+              <span class="text-sm text-[#777777]">Publications</span>
               {#if availableTeams.length > 0}
                 <span class="text-sm text-[#777777]">Tap to join</span>
               {/if}
@@ -1278,10 +1263,10 @@
             {/if}
           </div>
 
-        <!-- Team members Section -->
+        <!-- Collaborators Section -->
         <div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-[#777777]">Team members</span>
+              <span class="text-sm text-[#777777]">Collaborators</span>
               <span class="text-sm text-[#777777]">Editors</span>
             </div>
             <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
@@ -1312,13 +1297,13 @@
                 {/each}
               </div>
             {:else}
-              <p class="text-center text-[#999999] text-sm py-6">Team members appear here</p>
+              <p class="text-center text-[#999999] text-sm py-6">Collaborators appear here</p>
             {/if}
 
             <!-- Explanation text below members list -->
             {#if teamMembers.length > 0}
               <p class="text-sm text-[#999999] mt-3">
-                To leave the team, tap x. When you leave, all published stories revert to drafts. You cannot join more than one team.
+                To leave the publication, tap x. When you leave, all published stories revert to drafts. You cannot join more than one publication.
               </p>
             {/if}
           </div>
@@ -1386,10 +1371,10 @@
               class="w-full py-2 px-4 rounded-full text-white text-sm font-medium transition-opacity bg-red-600 hover:bg-red-700"
               class:opacity-50={deleteTeamConfirming}
             >
-              {deleteTeamConfirming ? 'Deleting...' : 'Delete the team'}
+              {deleteTeamConfirming ? 'Deleting...' : 'Delete publication'}
             </button>
             <p class="text-sm text-[#999999] mt-2">
-              If you delete the team published stories will revert to author drafts
+              Published stories will revert to author drafts
             </p>
           </div>
         {/if}
@@ -1452,7 +1437,7 @@
     {#if deleteTeamConfirming}
       <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
-          <h2 class="text-lg font-semibold text-[#333333] mb-2">Delete the team</h2>
+          <h2 class="text-lg font-semibold text-[#333333] mb-2">Delete publication</h2>
           <p class="text-sm text-[#666666] mb-6">Are you sure? This cannot be undone.</p>
 
           <div class="flex gap-3">
@@ -1494,14 +1479,9 @@
       </div>
     {/if}
 
-    <!-- Teams Tab Content -->
-    {#if activeTab === 'teams' && showTeamsTab}
-      <TeamsTab {courseId} />
-    {/if}
-
     <!-- Admin Tab Content -->
     {#if activeTab === 'admin' && showAdminTab}
-      <AdminTab {courseId} />
+      <CombinedAdminTab {courseId} />
     {/if}
   </main>
 </div>

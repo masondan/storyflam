@@ -29,13 +29,13 @@
 
   function setupRealtimeSubscription() {
     teamsSubscription = supabase
-      .channel('teams-changes-admin')
+      .channel('publications-changes-admin')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'teams',
+          table: 'publications',
           filter: `course_id=eq.${courseId}`
         },
         () => {
@@ -47,7 +47,7 @@
 
   async function loadTeams() {
     const { data, error } = await supabase
-      .from('teams')
+      .from('publications')
       .select('*')
       .eq('course_id', courseId)
       .order('created_at', { ascending: true })
@@ -76,10 +76,10 @@
   {#if loading}
     <p class="text-[#999999] text-center py-8">Loading...</p>
   {:else if teams.length === 0}
-    <p class="text-[#999999] text-center py-8">Teams and members appear here</p>
+    <p class="text-[#999999] text-center py-8">Publications appear here</p>
   {:else}
     <div>
-      <span class="text-sm text-[#777777] mb-3 block">Teams</span>
+      <span class="text-sm text-[#777777] mb-3 block">Publications</span>
       
       {#each teams as team (team.id)}
         <TeamExpandable

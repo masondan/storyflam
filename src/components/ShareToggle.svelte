@@ -35,7 +35,7 @@
 
 <div class="space-y-3">
   <div class="flex items-center justify-between pb-1 border-b border-[#e0e0e0]">
-    <span class="text-sm text-[#777777]">Share team stream</span>
+    <span class="text-sm text-[#777777]">Share your publication</span>
     
     <button
       type="button"
@@ -47,7 +47,7 @@
       style="background-color: {enabled ? `#${primaryColor}` : '#ccc'};"
       role="switch"
       aria-checked={enabled}
-      aria-label="Share team stream"
+      aria-label="Share your publication"
     >
       <span
         class="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"

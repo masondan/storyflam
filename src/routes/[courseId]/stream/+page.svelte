@@ -235,7 +235,7 @@
 </script>
 
 <svelte:head>
-  <title>NewsLab - Team Stream</title>
+  <title>StoryFlam | Publication</title>
 </svelte:head>
 
 <div class="min-h-screen bg-white flex flex-col pb-[70px]">

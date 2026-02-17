@@ -27,17 +27,17 @@
     <nav class="flex items-center h-[50px] px-3">
       <!-- Center Section: Home & Write & Stream -->
       <div class="flex-1 flex items-center justify-center">
-        <!-- User Home -->
+        <!-- My Stories -->
         <a
           href="/{courseId}/home"
           class="flex items-center justify-center px-2"
-          aria-label="Home"
+          aria-label="My Stories"
         >
           {#if isHomePage}
-              <div class="w-6 h-6" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-user-fill.svg'); mask-image: url('/icons/icon-user-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+              <div class="w-6 h-6" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-stories-fill.svg'); mask-image: url('/icons/icon-stories-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
           {:else}
             <img
-              src="/icons/icon-user.svg"
+              src="/icons/icon-stories.svg"
               alt=""
               class="w-6 h-6"
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
@@ -54,17 +54,17 @@
           <div class="w-14 h-14" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-newstory.svg'); mask-image: url('/icons/icon-newstory.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
         </button>
 
-        <!-- Team Stream -->
+        <!-- Publication -->
         <a
           href="/{courseId}/stream"
           class="flex items-center justify-center px-2"
-          aria-label="Team Stream"
+          aria-label="My Publication"
         >
           {#if isStreamPage}
-            <div class="w-6 h-6" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-group-fill.svg'); mask-image: url('/icons/icon-group-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+            <div class="w-6 h-6" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-publication-fill.svg'); mask-image: url('/icons/icon-publication-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
           {:else}
             <img
-              src="/icons/icon-group.svg"
+              src="/icons/icon-publication.svg"
               alt=""
               class="w-6 h-6"
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
@@ -73,17 +73,17 @@
         </a>
       </div>
 
-      <!-- Settings (far right) -->
+      <!-- Profile (far right) -->
       <a
         href="/{courseId}/settings"
         class="flex items-center justify-center w-6"
-        aria-label="Settings"
+        aria-label="My Profile"
       >
         {#if isSettingsPage}
-          <div class="w-6 h-6" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-settings-fill.svg'); mask-image: url('/icons/icon-settings-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+          <div class="w-6 h-6" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-profile-fill.svg'); mask-image: url('/icons/icon-profile-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
         {:else}
           <img
-            src="/icons/icon-settings.svg"
+            src="/icons/icon-profile.svg"
             alt=""
             class="w-6 h-6"
             style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
