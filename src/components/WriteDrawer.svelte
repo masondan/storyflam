@@ -15,6 +15,7 @@
   import { renderContent } from '$lib/content'
   import PreviewDrawer from './PreviewDrawer.svelte'
   import LockWarning from './LockWarning.svelte'
+  import LinkModal from './LinkModal.svelte'
 
   let title = ''
   let featuredImageUrl: string | null = null
@@ -33,6 +34,7 @@
   let editorContainer: HTMLDivElement
   let quillInstance: any = null
   let uploadingVideo = false
+  let uploadingImage = false
 
   // Lock state
   let isLocked = false
@@ -46,6 +48,10 @@
   let keyboardHeight = 0
   let isKeyboardVisible = false
   let toolbarBottomPosition = 0
+
+  // Link modal state
+  let showLinkModal = false
+  let linkInitialText = ''
 
   $: canPublish = title.trim().length > 0 && !!$session?.publicationName
   $: isEditingExisting = !!$editingStory.id
@@ -134,7 +140,6 @@
         video.setAttribute('controls', '')
         video.setAttribute('playsinline', '')
         video.classList.add('w-full', 'rounded-lg')
-        video.style.maxHeight = '300px'
         
         node.appendChild(video)
         node.dataset.videoUrl = value
@@ -148,86 +153,22 @@
     
     Quill.register(VideoBlot)
     
+    // Register a custom divider (horizontal rule) blot
+    class DividerBlot extends BlockEmbed {
+      static blotName = 'divider'
+      static tagName = 'hr'
+    }
+    Quill.register(DividerBlot)
+    
     quillInstance = new Quill(editorContainer, {
-      theme: 'bubble',
-      placeholder: 'Start writing...',
-      formats: ['bold', 'italic', 'underline', 'header', 'link', 'image', 'cloudinary-video'],
+      theme: 'snow',
+      placeholder: 'Text',
+      formats: ['bold', 'header', 'link', 'image', 'cloudinary-video', 'divider'],
       modules: {
-        toolbar: [
-          ['bold', 'italic', 'underline'],
-          [{ header: 2 }],
-          ['link', 'image']
-        ],
+        toolbar: false,
         clipboard: {
           matchVisual: false
         }
-      }
-    })
-    
-    const toolbarModule = quillInstance.getModule('toolbar')
-    
-    // Override default image handler to use Cloudinary upload
-    if (toolbarModule) {
-      toolbarModule.addHandler('image', () => {
-        imageFileInput.click()
-      })
-    }
-    
-    // Force tooltip visibility by monitoring for ql-hidden class
-    quillInstance.on('selection-change', (range, oldRange, source) => {
-      const tooltip = document.querySelector('.ql-tooltip')
-      const toolbar = tooltip?.querySelector('.ql-toolbar')
-      
-      if (tooltip && range && range.length > 0) {
-        // Use setProperty with priority to override Quill's inline styles
-        tooltip.style.setProperty('display', 'block', 'important')
-        tooltip.style.setProperty('visibility', 'visible', 'important')
-        tooltip.style.setProperty('position', 'fixed', 'important')
-        tooltip.style.setProperty('z-index', '70', 'important')
-        tooltip.style.setProperty('background-color', '#333333', 'important')
-        tooltip.style.setProperty('border-radius', '6px', 'important')
-        tooltip.style.setProperty('box-shadow', '0 4px 16px rgba(0, 0, 0, 0.4)', 'important')
-        tooltip.style.setProperty('padding', '6px 8px', 'important')
-        tooltip.style.setProperty('margin-bottom', '10px', 'important')
-        tooltip.classList.remove('ql-hidden')
-        
-        // Hide the input field container by default
-        const editor = tooltip.querySelector('.ql-tooltip-editor')
-        if (editor) {
-          editor.style.setProperty('display', 'none', 'important')
-        }
-        
-        // Force toolbar to have visible width
-        if (toolbar) {
-          toolbar.style.setProperty('display', 'inline-flex', 'important')
-          toolbar.style.setProperty('flex-wrap', 'wrap', 'important')
-          toolbar.style.setProperty('gap', '2px', 'important')
-          toolbar.style.setProperty('width', 'auto', 'important')
-          toolbar.style.setProperty('background', 'transparent', 'important')
-          toolbar.style.setProperty('border', 'none', 'important')
-          
-          // Fix buttons display
-          const buttons = toolbar.querySelectorAll('button')
-          buttons.forEach(btn => {
-            btn.style.setProperty('display', 'inline-block', 'important')
-            btn.style.setProperty('float', 'none', 'important')
-            btn.style.setProperty('width', '28px', 'important')
-            btn.style.setProperty('height', '24px', 'important')
-            btn.style.setProperty('padding', '2px', 'important')
-            
-            // Make SVG strokes white
-            const svg = btn.querySelector('svg')
-            if (svg) {
-              const paths = svg.querySelectorAll('path, circle, line, rect')
-              paths.forEach(path => {
-                path.style.setProperty('stroke', 'white', 'important')
-                path.style.setProperty('fill', 'white', 'important')
-              })
-            }
-          })
-        }
-      } else if (tooltip) {
-        tooltip.style.setProperty('display', 'none', 'important')
       }
     })
     
@@ -396,6 +337,7 @@
     if (!input.files?.length || !quillInstance) return
 
     const file = input.files[0]
+    uploadingImage = true
     
     try {
       const result = await uploadImage(file)
@@ -403,10 +345,12 @@
         const range = quillInstance.getSelection(true)
         quillInstance.insertEmbed(range.index, 'image', getOptimizedUrl(result.url))
         quillInstance.setSelection(range.index + 1)
+        scheduleAutoSave()
       }
     } catch {
       showNotification('error', 'Failed to upload image')
     }
+    uploadingImage = false
     input.value = ''
   }
 
@@ -441,6 +385,54 @@
     
     uploadingVideo = false
     input.value = ''
+  }
+
+  // Bottom toolbar formatting functions
+  function toggleBold() {
+    if (!quillInstance) return
+    const format = quillInstance.getFormat()
+    quillInstance.format('bold', !format.bold)
+  }
+
+  function toggleHeading() {
+    if (!quillInstance) return
+    const format = quillInstance.getFormat()
+    quillInstance.format('header', format.header === 2 ? false : 2)
+  }
+
+  function openLinkModal() {
+    if (!quillInstance) return
+    const range = quillInstance.getSelection()
+    if (range && range.length > 0) {
+      linkInitialText = quillInstance.getText(range.index, range.length)
+    } else {
+      linkInitialText = ''
+    }
+    showLinkModal = true
+  }
+
+  function handleLinkAdd(event: CustomEvent<{ text: string; url: string }>) {
+    if (!quillInstance) return
+    const { text, url } = event.detail
+    const range = quillInstance.getSelection(true)
+    
+    if (range.length > 0) {
+      // Replace selected text with link
+      quillInstance.deleteText(range.index, range.length)
+    }
+    quillInstance.insertText(range.index, text, 'link', url)
+    quillInstance.setSelection(range.index + text.length)
+    showLinkModal = false
+    scheduleAutoSave()
+  }
+
+  function insertSeparator() {
+    if (!quillInstance) return
+    const range = quillInstance.getSelection(true)
+    quillInstance.insertText(range.index, '\n')
+    quillInstance.insertEmbed(range.index + 1, 'divider', true)
+    quillInstance.setSelection(range.index + 2)
+    scheduleAutoSave()
   }
 
   function openPreview() {
@@ -598,7 +590,9 @@
       </button>
       
       <div class="flex items-center gap-2 text-sm text-[#777777]">
-        {#if uploadingVideo}
+        {#if uploadingImage}
+          <span>Uploading image...</span>
+        {:else if uploadingVideo}
           <span>Uploading video...</span>
         {:else if saving}
           <span>Saving...</span>
@@ -657,9 +651,12 @@
         {/if}
 
         <!-- Quill Editor -->
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
         <div
           bind:this={editorContainer}
-          class="editor-content relative min-h-[200px] text-base text-[#333333] leading-relaxed -mt-2"
+          class="editor-content relative text-base text-[#333333] leading-relaxed -mt-2"
+          style="min-height: calc(100vh - 280px);"
+          on:click={() => { if (quillInstance) quillInstance.focus() }}
         ></div>
       </div>
 
@@ -726,22 +723,38 @@
       <footer class="border-t border-[#efefef] px-4 py-3 bg-white">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <button on:click={() => imageFileInput.click()} class="p-2" aria-label="Add image">
+          <button on:click={toggleBold} class="p-2" aria-label="Bold text">
             <img
-              src="/icons/icon-image.svg"
+              src="/icons/icon-bold.svg"
               alt=""
               class="w-5 h-5"
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
             />
           </button>
-          <input
-            bind:this={imageFileInput}
-            type="file"
-            accept="image/*"
-            class="hidden"
-            on:change={handleInlineImageUpload}
-          />
-
+          <button on:click={toggleHeading} class="p-2" aria-label="Add subhead">
+            <img
+              src="/icons/icon-heading.svg"
+              alt=""
+              class="w-5 h-5"
+              style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+            />
+          </button>
+          <button on:click={openLinkModal} class="p-2" aria-label="Add link">
+            <img
+              src="/icons/icon-link.svg"
+              alt=""
+              class="w-5 h-5"
+              style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+            />
+          </button>
+          <button on:click={insertSeparator} class="p-2" aria-label="Add separator">
+            <img
+              src="/icons/icon-separator.svg"
+              alt=""
+              class="w-5 h-5"
+              style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+            />
+          </button>
           <button 
             on:click={() => videoFileInput.click()} 
             class="p-2" 
@@ -763,15 +776,22 @@
             class="hidden"
             on:change={handleVideoUpload}
           />
-
-          <button on:click={() => fileInput.click()} class="p-2" aria-label="Featured image">
+          <button on:click={() => imageFileInput.click()} class="p-2" aria-label="Add image" disabled={uploadingImage}>
             <img
-              src="/icons/icon-upload.svg"
+              src="/icons/icon-image.svg"
               alt=""
               class="w-5 h-5"
+              class:animate-pulse={uploadingImage}
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
             />
           </button>
+          <input
+            bind:this={imageFileInput}
+            type="file"
+            accept="image/*"
+            class="hidden"
+            on:change={handleInlineImageUpload}
+          />
         </div>
 
         <div class="w-px h-6 bg-[#999999]"></div>
@@ -838,6 +858,14 @@
     />
   {/if}
 
+  <!-- Link Modal -->
+  <LinkModal
+    open={showLinkModal}
+    initialText={linkInitialText}
+    on:add={handleLinkAdd}
+    on:close={() => showLinkModal = false}
+  />
+
   <!-- Lock Warning Modal -->
   {#if isLocked && lockedBy}
     <LockWarning {lockedBy} on:goback={handleLockGoBack} />
@@ -855,13 +883,26 @@
     background-color: var(--selection-color) !important;
   }
 
-  /* Quill Bubble theme overrides for our app */
+  /* Quill editor styling — Snow theme with toolbar disabled, all chrome hidden */
+  .editor-content :global(.ql-container.ql-snow),
+  .editor-content :global(.ql-snow),
+  .editor-content :global(.ql-container),
+  .editor-content :global(.ql-editor) {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .editor-content :global(.ql-tooltip) {
+    display: none !important;
+  }
+
   .editor-content :global(.ql-editor) {
     padding: 0;
     font-size: 1rem;
     line-height: 1.625;
     color: #333333;
-    min-height: 200px;
+    min-height: 100%;
   }
 
   .editor-content :global(.ql-editor.ql-blank::before) {
@@ -872,7 +913,7 @@
   }
 
   .editor-content :global(.ql-editor p) {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
   }
 
   .editor-content :global(.ql-editor strong) {
@@ -905,7 +946,7 @@
   }
 
   .editor-content :global(.ql-editor video) {
-    max-width: 100%;
+    width: 100%;
     border-radius: 0.5rem;
   }
 
@@ -918,67 +959,6 @@
     border-top: 1px solid #999999;
     width: 50%;
     margin: 1.5rem auto;
-  }
-
-  /* Bubble tooltip (toolbar) styling */
-  .editor-content :global(.ql-tooltip) {
-    display: block !important;
-  }
-
-  .editor-content :global(.ql-tooltip.ql-hidden) {
-    display: block !important;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip) {
-    position: fixed;
-    z-index: 70;
-    background-color: #333333;
-    border-radius: 4px;
-    color: white;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-  }
-
-  .editor-content :global(.ql-toolbar) {
-    width: auto !important;
-    background: transparent;
-    border: none;
-    display: flex !important;
-    min-width: 200px;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip-arrow) {
-    display: block;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip button) {
-    color: white;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip button svg) {
-    fill: white !important;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip button:hover) {
-    color: #ffffff;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip button.ql-active) {
-    color: #ffffff;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip-editor input) {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: none;
-  }
-
-  .editor-content :global(.ql-bubble .ql-tooltip-editor input::placeholder) {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .editor-content :global(.ql-out-bottom),
-  .editor-content :global(.ql-out-top) {
-    visibility: visible !important;
   }
 
   .editor-content :global(*)::selection {

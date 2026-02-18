@@ -2,5 +2,5 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Quill Bubble theme */
-@import 'quill/dist/quill.bubble.css';
+/* Quill Snow theme (toolbar hidden, used as editing engine only) */
+@import 'quill/dist/quill.snow.css';
