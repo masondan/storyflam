@@ -1,6 +1,7 @@
 <script lang="ts">
   import { storyReaderDrawerOpen, currentViewingStory, session } from '$lib/stores'
   import { fly } from 'svelte/transition'
+  import { onMount } from 'svelte'
   import { getOptimizedUrl } from '$lib/cloudinary'
   import { renderContent } from '$lib/content'
 
@@ -30,6 +31,27 @@
     // Reduce opacity as user scrolls down, min opacity at 100px
     headerOpacity = Math.max(0.3, 1 - scrollY / 100)
   }
+
+  onMount(async () => {
+    // Dynamically import Plyr only on client
+    const PlyrModule = await import('plyr')
+    const Plyr = PlyrModule.default
+
+    // Initialize Plyr for any videos in the story content
+    // Use a small delay to ensure DOM is fully rendered
+    setTimeout(() => {
+      const videos = document.querySelectorAll('.story-content video')
+      videos.forEach(video => {
+        // Skip if already initialized by Plyr
+        if (video.parentElement?.classList.contains('plyr')) return
+        
+        new Plyr(video as HTMLVideoElement, {
+          controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'fullscreen'],
+          quality: { default: 720, options: [720] }
+        })
+      })
+    }, 100)
+  })
 
 </script>
 
@@ -95,9 +117,9 @@
       {/if}
     </main>
   </div>
-{/if}
-
-<style>
+  {/if}
+  
+  <style>
   .story-content :global(p) {
     margin-bottom: 0.5rem;
     font-size: 1rem;
@@ -147,5 +169,13 @@
     border-top: 1px solid #999999;
     width: 50%;
     margin: 1.5rem auto;
+  }
+
+  .story-content :global(.plyr) {
+    --plyr-color-main: #5422b0;
+  }
+
+  .story-content :global(.plyr__video-wrapper) {
+    background: transparent;
   }
 </style>

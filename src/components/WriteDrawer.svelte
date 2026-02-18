@@ -53,6 +53,9 @@
   let showLinkModal = false
   let linkInitialText = ''
 
+  // Media delete overlay state
+  let deleteOverlay: { type: 'image' | 'video', element: HTMLElement } | null = null
+
   $: canPublish = title.trim().length > 0 && !!$session?.publicationName
   $: isEditingExisting = !!$editingStory.id
   $: isPublishedStory = $editingStory.status === 'published'
@@ -133,21 +136,36 @@
       static create(value: string) {
         const node = super.create() as HTMLElement
         node.setAttribute('contenteditable', 'false')
-        node.classList.add('my-4')
+        node.classList.add('my-4', 'relative', 'group')
         
         const video = document.createElement('video')
-        video.setAttribute('src', getOptimizedVideoUrl(value))
-        video.setAttribute('controls', '')
         video.setAttribute('playsinline', '')
         video.classList.add('w-full', 'rounded-lg')
+        video.controls = false
+        
+        const source = document.createElement('source')
+        source.setAttribute('src', getOptimizedVideoUrl(value))
+        source.setAttribute('type', 'video/mp4')
+        video.appendChild(source)
         
         node.appendChild(video)
         node.dataset.videoUrl = value
+        
+        // Initialize Plyr player (when available)
+        setTimeout(() => {
+          if ((window as any).PlyrConstructor) {
+            new (window as any).PlyrConstructor(video, {
+              controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'fullscreen'],
+              quality: { default: 720, options: [720] }
+            })
+          }
+        }, 0)
+        
         return node
       }
       
       static value(node: HTMLElement): string {
-        return node.dataset.videoUrl || node.querySelector('video')?.getAttribute('src') || ''
+        return node.dataset.videoUrl || node.querySelector('source')?.getAttribute('src') || ''
       }
     }
     
@@ -212,7 +230,12 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
+    // Dynamically import Plyr only on client
+    const PlyrModule = await import('plyr')
+    const Plyr = PlyrModule.default
+    window.PlyrConstructor = Plyr
+
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleViewportResize)
       window.visualViewport.addEventListener('scroll', handleViewportResize)
@@ -428,6 +451,32 @@
     quillInstance.setSelection(range.index + text.length)
     showLinkModal = false
     scheduleAutoSave()
+  }
+
+  function handleMediaClick(e: MouseEvent) {
+    const target = e.target as HTMLElement
+    const img = target.closest('img') as HTMLImageElement
+    
+    // Only show delete overlay for images, not videos (Plyr player needs to work)
+    if (img && img.closest('.ql-editor')) {
+      e.preventDefault()
+      deleteOverlay = {
+        type: 'image',
+        element: img
+      }
+    }
+  }
+
+  function deleteMedia() {
+    if (!deleteOverlay || !quillInstance) return
+
+    const element = deleteOverlay.element
+    const blot = quillInstance.constructor.find(element)
+    if (blot) {
+      blot.remove()
+      scheduleAutoSave()
+    }
+    deleteOverlay = null
   }
 
   function insertSeparator() {
@@ -657,11 +706,30 @@
         <!-- Quill Editor -->
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
         <div
-          bind:this={editorContainer}
-          class="editor-content relative text-base text-[#333333] leading-relaxed -mt-2"
+          class="relative"
           style="min-height: calc(100vh - 280px);"
-          on:click={() => { if (quillInstance) quillInstance.focus() }}
-        ></div>
+        >
+          <div
+            bind:this={editorContainer}
+            class="editor-content relative text-base text-[#333333] leading-relaxed -mt-2 h-full"
+            on:click={(e) => {
+              handleMediaClick(e)
+              if (quillInstance) quillInstance.focus()
+            }}
+          ></div>
+
+          <!-- Media Delete Button -->
+          {#if deleteOverlay}
+            <button
+              on:click={deleteMedia}
+              class="absolute w-8 h-8 rounded-full flex items-center justify-center z-50"
+              style="top: {deleteOverlay.element.offsetTop + 16}px; left: {deleteOverlay.element.offsetLeft + deleteOverlay.element.offsetWidth - 46}px; background-color: #777777;"
+              aria-label="Delete {deleteOverlay.type}"
+            >
+              <img src="/icons/icon-close.svg" alt="" class="w-4 h-4 invert" />
+            </button>
+          {/if}
+        </div>
       </div>
 
       <!-- Word Count -->
@@ -888,13 +956,38 @@
   }
 
   /* Quill editor styling — Snow theme with toolbar disabled, all chrome hidden */
-  .editor-content :global(.ql-container.ql-snow),
-  .editor-content :global(.ql-snow),
-  .editor-content :global(.ql-container),
-  .editor-content :global(.ql-editor) {
+  .editor-content {
+    height: 100%;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
+  }
+
+  .editor-content :global(.ql-container.ql-snow),
+  .editor-content :global(.ql-snow),
+  .editor-content :global(.ql-container),
+  .editor-content :global(.ql-editor),
+  .editor-content :global(.ql-editor:focus),
+  .editor-content :global(.ql-editor.ql-focused) {
+    border: none !important;
+    border-top: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    outline: none !important;
+    outline-width: 0 !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+  }
+
+  .editor-content :global(.ql-container) {
+    height: 100%;
+    border: none !important;
+  }
+
+  .editor-content :global(.ql-container::before),
+  .editor-content :global(.ql-container::after) {
+    display: none !important;
   }
 
   .editor-content :global(.ql-tooltip) {
@@ -907,6 +1000,7 @@
     line-height: 1.625;
     color: #333333;
     min-height: 100%;
+    height: 100%;
   }
 
   .editor-content :global(.ql-editor.ql-blank::before) {
@@ -943,10 +1037,12 @@
     max-width: 100%;
     border-radius: 0.5rem;
     margin: 1rem 0;
+    cursor: pointer;
   }
 
   .editor-content :global(.ql-editor .ql-video-wrapper) {
     margin: 1rem 0;
+    cursor: pointer;
   }
 
   .editor-content :global(.ql-editor video) {
@@ -967,5 +1063,10 @@
 
   .editor-content :global(*)::selection {
     background-color: var(--selection-color) !important;
+  }
+
+  /* Plyr customization */
+  .editor-content :global(.plyr) {
+    --plyr-color-main: #5422b0;
   }
 </style>
