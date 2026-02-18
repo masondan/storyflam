@@ -90,7 +90,7 @@
       {/if}
 
       <!-- Content Blocks -->
-      <div class="prose prose-sm max-w-none text-[#333333]">
+      <div class="story-content">
         {#if contentHtml}
           {@html contentHtml}
         {:else}
@@ -102,3 +102,56 @@
       </div>
     </main>
   </div>
+
+<style>
+  .story-content :global(p) {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    line-height: 1.625;
+    color: #333333;
+  }
+
+  .story-content :global(h2) {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #000000;
+  }
+
+  .story-content :global(strong) {
+    font-weight: 700;
+  }
+
+  .story-content :global(em) {
+    font-style: italic;
+  }
+
+  .story-content :global(a) {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .story-content :global(img) {
+    width: 100%;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  .story-content :global(video) {
+    width: 100%;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  .story-content :global(.ql-video-wrapper) {
+    margin: 1rem 0;
+  }
+
+  .story-content :global(hr) {
+    border: none;
+    border-top: 1px solid #999999;
+    width: 50%;
+    margin: 1.5rem auto;
+  }
+</style>

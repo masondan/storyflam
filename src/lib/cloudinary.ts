@@ -81,5 +81,5 @@ export async function uploadVideo(file: File): Promise<UploadResult> {
 
 export function getOptimizedVideoUrl(url: string): string {
   if (!url.includes('cloudinary.com')) return url
-  return url.replace('/upload/', '/upload/q_auto,f_auto,h_480/')
+  return url.replace('/upload/', '/upload/h_1280,c_limit,q_auto,f_auto/')
 }

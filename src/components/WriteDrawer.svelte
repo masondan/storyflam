@@ -344,7 +344,9 @@
       if (result.url) {
         const range = quillInstance.getSelection(true)
         quillInstance.insertEmbed(range.index, 'image', getOptimizedUrl(result.url))
-        quillInstance.setSelection(range.index + 1)
+        // Insert a new paragraph after the image and move cursor to it
+        quillInstance.insertText(range.index + 1, '\n')
+        quillInstance.setSelection(range.index + 2)
         scheduleAutoSave()
       }
     } catch {
@@ -376,7 +378,9 @@
       } else if (result.url) {
         const range = quillInstance.getSelection(true)
         quillInstance.insertEmbed(range.index, 'cloudinary-video', result.url)
-        quillInstance.setSelection(range.index + 1)
+        // Insert a new paragraph after the video and move cursor to it
+        quillInstance.insertText(range.index + 1, '\n')
+        quillInstance.setSelection(range.index + 2)
         scheduleAutoSave()
       }
     } catch {
