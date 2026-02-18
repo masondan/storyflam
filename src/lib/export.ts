@@ -1,4 +1,6 @@
 import type { Story, ContentBlock } from './types'
+import { isBlockContent, isHtmlContent } from './types'
+import { contentToPlainText } from './content'
 
 export function exportToTxt(story: Story): void {
   let content = `${story.title}\n`
@@ -9,10 +11,14 @@ export function exportToTxt(story: Story): void {
     content += `${story.summary}\n\n`
   }
 
-  if (story.content?.blocks) {
-    story.content.blocks.forEach(block => {
-      content += blockToText(block)
-    })
+  if (story.content) {
+    if (isHtmlContent(story.content)) {
+      content += contentToPlainText(story.content)
+    } else if (isBlockContent(story.content)) {
+      story.content.blocks.forEach(block => {
+        content += blockToText(block)
+      })
+    }
   }
 
   downloadFile(content, `${slugify(story.title)}.txt`, 'text/plain')
@@ -62,7 +68,7 @@ export async function exportToPdf(story: Story): Promise<void> {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
 
-  if (story.content?.blocks) {
+  if (story.content && isBlockContent(story.content)) {
     for (const block of story.content.blocks) {
       if (y > 270) {
         doc.addPage()
@@ -124,6 +130,11 @@ export async function exportToPdf(story: Story): Promise<void> {
         y += lines.length * 6 + 4
       }
     }
+  } else if (story.content && isHtmlContent(story.content)) {
+    const plainText = contentToPlainText(story.content)
+    const lines = doc.splitTextToSize(plainText, contentWidth)
+    doc.text(lines, margin, y)
+    y += lines.length * 6 + 4
   }
 
   doc.save(`${slugify(story.title)}.pdf`)

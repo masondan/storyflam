@@ -8,7 +8,7 @@ export interface StoryInput {
   title: string
   summary?: string
   featuredImageUrl?: string | null
-  content?: { blocks: ContentBlock[] } | null
+  content?: { blocks: ContentBlock[] } | { html: string } | null
   status?: 'draft' | 'published'
 }
 
@@ -406,7 +406,7 @@ function mapStory(row: Record<string, unknown>): Story {
     title: row.title as string,
     summary: row.summary as string | null,
     featured_image_url: row.featured_image_url as string | null,
-    content: row.content as { blocks: ContentBlock[] } | null,
+    content: row.content as Story['content'],
     status: row.status as 'draft' | 'published',
     is_pinned: row.is_pinned as boolean,
     pin_index: row.pin_index as number | null,

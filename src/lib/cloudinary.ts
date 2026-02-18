@@ -48,3 +48,38 @@ export function getThumbnailUrl(url: string, size: number = 300): string {
   if (!url.includes('cloudinary.com')) return url
   return url.replace('/upload/', `/upload/w_${size},h_${size},c_fill,q_auto,f_auto/`)
 }
+
+export async function uploadVideo(file: File): Promise<UploadResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', UPLOAD_PRESET)
+  formData.append('folder', 'newslab/videos')
+
+  try {
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`,
+      { method: 'POST', body: formData }
+    )
+
+    if (!response.ok) {
+      return { url: '', width: 0, height: 0, publicId: '', error: 'Failed to upload video' }
+    }
+
+    const data = await response.json()
+
+    return {
+      url: data.secure_url,
+      width: data.width,
+      height: data.height,
+      publicId: data.public_id
+    }
+  } catch (err) {
+    console.error('Upload error:', err)
+    return { url: '', width: 0, height: 0, publicId: '', error: 'Upload failed' }
+  }
+}
+
+export function getOptimizedVideoUrl(url: string): string {
+  if (!url.includes('cloudinary.com')) return url
+  return url.replace('/upload/', '/upload/q_auto,f_auto,h_480/')
+}

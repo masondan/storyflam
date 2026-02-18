@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
   import { fly } from 'svelte/transition'
   import {
     writeDrawerOpen,
@@ -9,26 +9,19 @@
     teamColors,
     showNotification
   } from '$lib/stores'
-  import { uploadImage, getOptimizedUrl } from '$lib/cloudinary'
+  import { uploadImage, getOptimizedUrl, uploadVideo, getOptimizedVideoUrl } from '$lib/cloudinary'
   import { createStory, updateStory, publishStory, acquireLock, releaseLock, refreshLock } from '$lib/stories'
   import { logActivity } from '$lib/activity'
-  import type { ContentBlock } from '$lib/types'
-  import YouTubeModal from './YouTubeModal.svelte'
-  import LinkModal from './LinkModal.svelte'
+  import { renderContent } from '$lib/content'
   import PreviewDrawer from './PreviewDrawer.svelte'
   import LockWarning from './LockWarning.svelte'
 
   let title = ''
   let featuredImageUrl: string | null = null
   let featuredImageCaption = ''
-  let contentBlocks: ContentBlock[] = []
-  let editorElement: HTMLDivElement
   let fileInput: HTMLInputElement
   let imageFileInput: HTMLInputElement
-
-  let showYouTubeModal = false
-  let showLinkModal = false
-  let selectedText = ''
+  let videoFileInput: HTMLInputElement
 
   let showPublishToolbar = false
   let showSaveToolbar = false
@@ -36,12 +29,10 @@
   let lastSavedTime: number | null = null
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 
-  let isBoldActive = false
-  let isHeadingActive = false
-  let isLinkActive = false
-  
-  // Store selection/range before opening modals
-  let savedRange: Range | null = null
+  // Quill editor
+  let editorContainer: HTMLDivElement
+  let quillInstance: any = null
+  let uploadingVideo = false
 
   // Lock state
   let isLocked = false
@@ -49,14 +40,13 @@
   let lockRefreshTimer: ReturnType<typeof setInterval> | null = null
 
   const AUTOSAVE_DELAY = 3000
-  const LOCK_REFRESH_INTERVAL = 60 * 1000 // Refresh lock every minute
+  const LOCK_REFRESH_INTERVAL = 60 * 1000
 
   // Keyboard detection for toolbar positioning
   let keyboardHeight = 0
   let isKeyboardVisible = false
   let toolbarBottomPosition = 0
 
-  $: wordCount = countWords()
   $: canPublish = title.trim().length > 0 && !!$session?.publicationName
   $: isEditingExisting = !!$editingStory.id
   $: isPublishedStory = $editingStory.status === 'published'
@@ -75,45 +65,176 @@
     clearLockRefreshTimer()
     
     if (story.id) {
-      // Editing existing story - try to acquire lock
       if ($session) {
         const lockResult = await acquireLock(story.id, $session.name)
         if (!lockResult.success) {
-          // Story is locked by someone else
           isLocked = true
           lockedBy = lockResult.error?.replace('Story is being edited by ', '') || 'another user'
         } else {
-          // Lock acquired - start refresh timer
           startLockRefreshTimer(story.id)
         }
       }
       
-      // Load story data
       title = story.title
       featuredImageUrl = story.featuredImageUrl
       featuredImageCaption = story.featuredImageCaption
-      contentBlocks = [...story.content]
       lastSavedTime = story.lastSaved
     } else {
-      // New story - always blank
       title = ''
       featuredImageUrl = null
       featuredImageCaption = ''
-      contentBlocks = []
       lastSavedTime = null
     }
     showPublishToolbar = false
     saving = false
-    // Clear editor after DOM updates
-    setTimeout(() => {
-      if (editorElement) {
-        if (story.id && contentBlocks.length > 0) {
-          renderContentToEditor()
+    
+    // Initialize Quill after DOM update
+    await tick()
+    await initQuill()
+    
+    // Load content into Quill
+    if (quillInstance) {
+      if (story.id) {
+        if (story.contentHtml) {
+          // New format: load HTML directly
+          quillInstance.root.innerHTML = story.contentHtml
+        } else if (story.content && story.content.length > 0) {
+          // Legacy format: convert blocks to HTML and load
+          const html = renderContent({ blocks: story.content }, $teamColors.primary)
+          quillInstance.root.innerHTML = html
         } else {
-          editorElement.innerHTML = ''
+          quillInstance.setText('')
+        }
+      } else {
+        quillInstance.setText('')
+      }
+    }
+  }
+
+  async function initQuill() {
+    if (quillInstance || !editorContainer) return
+    
+    const Quill = (await import('quill')).default
+    
+    // Register a custom video blot for Cloudinary videos
+    const BlockEmbed = Quill.import('blots/block/embed') as any
+    
+    class VideoBlot extends BlockEmbed {
+      static blotName = 'cloudinary-video'
+      static tagName = 'div'
+      static className = 'ql-video-wrapper'
+      
+      static create(value: string) {
+        const node = super.create() as HTMLElement
+        node.setAttribute('contenteditable', 'false')
+        node.classList.add('my-4')
+        
+        const video = document.createElement('video')
+        video.setAttribute('src', getOptimizedVideoUrl(value))
+        video.setAttribute('controls', '')
+        video.setAttribute('playsinline', '')
+        video.classList.add('w-full', 'rounded-lg')
+        video.style.maxHeight = '300px'
+        
+        node.appendChild(video)
+        node.dataset.videoUrl = value
+        return node
+      }
+      
+      static value(node: HTMLElement): string {
+        return node.dataset.videoUrl || node.querySelector('video')?.getAttribute('src') || ''
+      }
+    }
+    
+    Quill.register(VideoBlot)
+    
+    quillInstance = new Quill(editorContainer, {
+      theme: 'bubble',
+      placeholder: 'Start writing...',
+      formats: ['bold', 'italic', 'underline', 'header', 'link', 'image', 'cloudinary-video'],
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          [{ header: 2 }],
+          ['link', 'image']
+        ],
+        clipboard: {
+          matchVisual: false
         }
       }
-    }, 0)
+    })
+    
+    const toolbarModule = quillInstance.getModule('toolbar')
+    
+    // Override default image handler to use Cloudinary upload
+    if (toolbarModule) {
+      toolbarModule.addHandler('image', () => {
+        imageFileInput.click()
+      })
+    }
+    
+    // Force tooltip visibility by monitoring for ql-hidden class
+    quillInstance.on('selection-change', (range, oldRange, source) => {
+      const tooltip = document.querySelector('.ql-tooltip')
+      const toolbar = tooltip?.querySelector('.ql-toolbar')
+      
+      if (tooltip && range && range.length > 0) {
+        // Use setProperty with priority to override Quill's inline styles
+        tooltip.style.setProperty('display', 'block', 'important')
+        tooltip.style.setProperty('visibility', 'visible', 'important')
+        tooltip.style.setProperty('position', 'fixed', 'important')
+        tooltip.style.setProperty('z-index', '70', 'important')
+        tooltip.style.setProperty('background-color', '#333333', 'important')
+        tooltip.style.setProperty('border-radius', '6px', 'important')
+        tooltip.style.setProperty('box-shadow', '0 4px 16px rgba(0, 0, 0, 0.4)', 'important')
+        tooltip.style.setProperty('padding', '6px 8px', 'important')
+        tooltip.style.setProperty('margin-bottom', '10px', 'important')
+        tooltip.classList.remove('ql-hidden')
+        
+        // Hide the input field container by default
+        const editor = tooltip.querySelector('.ql-tooltip-editor')
+        if (editor) {
+          editor.style.setProperty('display', 'none', 'important')
+        }
+        
+        // Force toolbar to have visible width
+        if (toolbar) {
+          toolbar.style.setProperty('display', 'inline-flex', 'important')
+          toolbar.style.setProperty('flex-wrap', 'wrap', 'important')
+          toolbar.style.setProperty('gap', '2px', 'important')
+          toolbar.style.setProperty('width', 'auto', 'important')
+          toolbar.style.setProperty('background', 'transparent', 'important')
+          toolbar.style.setProperty('border', 'none', 'important')
+          
+          // Fix buttons display
+          const buttons = toolbar.querySelectorAll('button')
+          buttons.forEach(btn => {
+            btn.style.setProperty('display', 'inline-block', 'important')
+            btn.style.setProperty('float', 'none', 'important')
+            btn.style.setProperty('width', '28px', 'important')
+            btn.style.setProperty('height', '24px', 'important')
+            btn.style.setProperty('padding', '2px', 'important')
+            
+            // Make SVG strokes white
+            const svg = btn.querySelector('svg')
+            if (svg) {
+              const paths = svg.querySelectorAll('path, circle, line, rect')
+              paths.forEach(path => {
+                path.style.setProperty('stroke', 'white', 'important')
+                path.style.setProperty('fill', 'white', 'important')
+              })
+            }
+          })
+        }
+      } else if (tooltip) {
+        tooltip.style.setProperty('display', 'none', 'important')
+      }
+    })
+    
+    // Listen for text changes to trigger auto-save
+    quillInstance.on('text-change', () => {
+      scheduleAutoSave()
+    })
   }
 
   function startLockRefreshTimer(storyId: string) {
@@ -139,16 +260,11 @@
     const windowHeight = window.innerHeight
     const viewportHeight = viewport.height
     
-    // Keyboard is visible when viewport height is significantly less than window height
     const heightDiff = windowHeight - viewportHeight
     isKeyboardVisible = heightDiff > 100
     keyboardHeight = isKeyboardVisible ? heightDiff : 0
     
-    // Calculate toolbar position accounting for viewport scroll offset
-    // This keeps toolbar fixed relative to actual visible area, not layout viewport
     if (isKeyboardVisible) {
-      // Position from bottom of visible viewport (above keyboard)
-      // viewport.offsetTop accounts for any scroll of the visual viewport
       toolbarBottomPosition = windowHeight - viewport.height - viewport.offsetTop
     } else {
       toolbarBottomPosition = 0
@@ -156,9 +272,6 @@
   }
 
   onMount(() => {
-    document.addEventListener('selectionchange', handleSelectionChange)
-    
-    // Set up visual viewport listener for keyboard detection
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleViewportResize)
       window.visualViewport.addEventListener('scroll', handleViewportResize)
@@ -168,359 +281,32 @@
   onDestroy(() => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
     clearLockRefreshTimer()
-    document.removeEventListener('selectionchange', handleSelectionChange)
     
     if (window.visualViewport) {
       window.visualViewport.removeEventListener('resize', handleViewportResize)
       window.visualViewport.removeEventListener('scroll', handleViewportResize)
     }
+    
+    if (quillInstance) {
+      quillInstance = null
+    }
   })
 
-  function handleSelectionChange() {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) {
-      isBoldActive = false
-      isHeadingActive = false
-      isLinkActive = false
-      return
-    }
-
-    const range = selection.getRangeAt(0)
-    if (!editorElement?.contains(range.commonAncestorContainer)) {
-      isBoldActive = false
-      isHeadingActive = false
-      isLinkActive = false
-      return
-    }
-
-    // Reset states
-    isHeadingActive = false
-    isBoldActive = false
-    isLinkActive = false
-
-    // Walk up the DOM tree to check for heading, bold, or link
-    let node: Node | null = range.commonAncestorContainer
-    
-    while (node && node !== editorElement) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        const tagName = el.tagName.toLowerCase()
-        
-        if (tagName === 'h2') {
-          isHeadingActive = true
-          // Headings are never bold - exit immediately
-          isBoldActive = false
-          return
-        }
-        if (tagName === 'strong' || tagName === 'b') {
-          isBoldActive = true
-        }
-        if (tagName === 'a') {
-          isLinkActive = true
-        }
-      }
-      node = node.parentNode
-    }
-
-    // Also check via queryCommandState for bold (only if not in heading)
-    if (!isBoldActive) {
-      isBoldActive = document.queryCommandState('bold')
-    }
+  function getEditorHtml(): string {
+    if (!quillInstance) return ''
+    const html = quillInstance.root.innerHTML
+    // Quill uses <p><br></p> for empty — treat as empty
+    if (html === '<p><br></p>' || html === '<p></p>') return ''
+    return html
   }
 
-  function countWords(): number {
+  function getWordCount(): number {
     let text = title + ' '
-    contentBlocks.forEach(block => {
-      if (block.text) text += block.text + ' '
-      if (block.items) text += block.items.join(' ') + ' '
-    })
-    const words = text.trim().split(/\s+/).filter(w => w.length > 0)
+    if (quillInstance) {
+      text += quillInstance.getText()
+    }
+    const words = text.trim().split(/\s+/).filter((w: string) => w.length > 0)
     return words.length
-  }
-
-  function renderContentToEditor() {
-    if (!editorElement) return
-    editorElement.innerHTML = ''
-    contentBlocks.forEach((block, index) => {
-      const el = createBlockElement(block)
-      if (el) {
-        editorElement.appendChild(el)
-        // Add a paragraph after images/videos to ensure text can flow properly
-        if ((block.type === 'image' || block.type === 'youtube') && index < contentBlocks.length - 1) {
-          const spacer = document.createElement('p')
-          spacer.className = 'mb-4'
-          spacer.innerHTML = '&nbsp;'
-          spacer.setAttribute('data-spacer', 'true')  // Mark as spacer for consistent parsing
-          editorElement.appendChild(spacer)
-        }
-      }
-    })
-  }
-
-  function createBlockElement(block: ContentBlock): HTMLElement | null {
-    switch (block.type) {
-      case 'paragraph':
-        const p = document.createElement('p')
-        // Use innerHTML to preserve inline formatting (bold, links, etc.)
-        p.innerHTML = block.text || ''
-        p.className = 'mb-4'
-        return p
-      case 'heading':
-        const h2 = document.createElement('h2')
-        h2.innerHTML = block.text || ''
-        h2.className = 'text-xl font-bold my-4'
-        return h2
-      case 'bold':
-        const strong = document.createElement('p')
-        strong.innerHTML = `<strong>${block.text || ''}</strong>`
-        strong.className = 'mb-4'
-        return strong
-      case 'separator':
-        const hr = document.createElement('hr')
-        hr.className = 'w-1/2 mx-auto my-4 border-[#999999]'
-        return hr
-      case 'image':
-        const figure = document.createElement('figure')
-        figure.className = 'image-figure relative my-4'
-        figure.contentEditable = 'false'
-        figure.style.margin = '1rem 0'
-        figure.dataset.url = block.url || ''
-        
-        const imgWrapper = document.createElement('div')
-        imgWrapper.className = 'relative'
-        
-        const imgEl = document.createElement('img')
-        imgEl.src = getOptimizedUrl(block.url || '')
-        imgEl.alt = ''
-        imgEl.className = 'w-full rounded-lg'
-        
-        const imgDeleteBtn = document.createElement('button')
-        imgDeleteBtn.className = 'delete-media absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors'
-        imgDeleteBtn.setAttribute('aria-label', 'Remove image')
-        imgDeleteBtn.innerHTML = '<img src="/icons/icon-close.svg" alt="" class="w-3 h-3 invert" />'
-        imgDeleteBtn.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          figure.remove()
-          handleEditorInput()
-          scheduleAutoSave()
-        })
-        
-        imgWrapper.appendChild(imgEl)
-        imgWrapper.appendChild(imgDeleteBtn)
-        
-        figure.appendChild(imgWrapper)
-        return figure
-      case 'youtube':
-        const videoDiv = document.createElement('div')
-        videoDiv.className = 'youtube-embed relative mb-4 aspect-video bg-[#efefef] rounded-lg'
-        videoDiv.contentEditable = 'false'
-        const videoId = extractYouTubeId(block.url || '')
-        videoDiv.innerHTML = `
-          <iframe 
-            src="https://www.youtube.com/embed/${videoId}" 
-            class="w-full h-full rounded-lg"
-            frameborder="0" 
-            allowfullscreen
-          ></iframe>
-          <button 
-            class="delete-media absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-            aria-label="Remove video"
-          >
-            <img src="/icons/icon-close.svg" alt="" class="w-3 h-3 invert" />
-          </button>
-        `
-        videoDiv.dataset.youtubeUrl = block.url || ''
-        if (block.thumbnailUrl) videoDiv.dataset.thumbnailUrl = block.thumbnailUrl
-        
-        // Add delete handler
-        const vidDeleteBtn = videoDiv.querySelector('.delete-media')
-        vidDeleteBtn?.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          videoDiv.remove()
-          handleEditorInput()
-          scheduleAutoSave()
-        })
-        
-        return videoDiv
-      case 'link':
-        const linkP = document.createElement('p')
-        linkP.innerHTML = `<a href="${block.url}" target="_blank" style="color: #${block.color || $teamColors.primary}; text-decoration: none;">${block.text}</a>`
-        linkP.className = 'mb-4'
-        return linkP
-      default:
-        return null
-    }
-  }
-
-  function extractYouTubeId(url: string): string {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
-    return match ? match[1] : ''
-  }
-
-  function parseEditorContent(): ContentBlock[] {
-    if (!editorElement) return []
-    const blocks: ContentBlock[] = []
-    
-    editorElement.childNodes.forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent?.trim()
-        if (text) {
-          blocks.push({ type: 'paragraph', text })
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        const tagName = el.tagName.toLowerCase()
-        
-        if (tagName === 'p') {
-          // Check if paragraph contains an image (browsers sometimes wrap images in <p>)
-          const img = el.querySelector('img')
-          if (img) {
-            const imageUrl = img.getAttribute('src') || ''
-            if (imageUrl) {
-              blocks.push({ type: 'image', url: imageUrl })
-            }
-            return
-          }
-          
-          // Skip truly empty paragraphs (no text content at all)
-          const textContent = el.textContent?.trim() || ''
-          const innerHTML = el.innerHTML?.trim() || ''
-          if (!textContent && (innerHTML === '' || innerHTML === '&nbsp;' || innerHTML === '<br>')) {
-            return
-          }
-          
-          // Check if paragraph contains only bold text
-          const strong = el.querySelector('strong, b')
-          const link = el.querySelector('a')
-          
-          if (strong && el.textContent === strong.textContent) {
-            // Entire paragraph is bold
-            blocks.push({ type: 'bold', text: strong.textContent || '' })
-          } else if (link && el.textContent === link.textContent) {
-            blocks.push({
-              type: 'link',
-              text: link.textContent || '',
-              url: link.getAttribute('href') || '',
-              color: $teamColors.primary
-            })
-          } else {
-            // Check for any inline formatting
-            const hasFormatting = el.querySelector('strong, b, a, u, em, i')
-            if (hasFormatting) {
-              // Preserve innerHTML to keep formatting
-              const html = el.innerHTML?.trim()
-              if (html) blocks.push({ type: 'paragraph', text: html })
-            } else {
-              // Plain text only
-              const text = el.textContent?.trim()
-              if (text) blocks.push({ type: 'paragraph', text })
-            }
-          }
-        } else if (tagName === 'h2') {
-          blocks.push({ type: 'heading', text: el.textContent || '' })
-        } else if (tagName === 'hr') {
-          blocks.push({ type: 'separator' })
-        } else if (tagName === 'strong' || tagName === 'b') {
-          // Standalone bold element (not wrapped in p)
-          const text = el.textContent?.trim()
-          if (text) blocks.push({ type: 'bold', text })
-        } else if (tagName === 'figure') {
-          const imageUrl = el.dataset.url || el.querySelector('img')?.src || ''
-          if (imageUrl) {
-            blocks.push({
-              type: 'image',
-              url: imageUrl
-            })
-          }
-        } else if (tagName === 'div') {
-          // Check for YouTube iframe or placeholder
-          if (el.classList.contains('image-placeholder')) {
-            // Skip loading placeholder
-          } else if (el.classList.contains('youtube-embed')) {
-            // YouTube embed with delete button
-            const youtubeUrl = el.dataset.youtubeUrl
-            const thumbnailUrl = el.dataset.thumbnailUrl
-            if (youtubeUrl) {
-              blocks.push({ 
-                type: 'youtube', 
-                url: youtubeUrl,
-                thumbnailUrl: thumbnailUrl || undefined
-              })
-            }
-          } else {
-            const iframe = el.querySelector('iframe')
-            if (iframe) {
-              const src = iframe.src
-              if (src.includes('youtube')) {
-                blocks.push({ type: 'youtube', url: src })
-              }
-            } else {
-              // Plain div (created by contenteditable on Enter) - treat as paragraph
-              const hasFormatting = el.querySelector('strong, b, a, u, em, i')
-              if (hasFormatting) {
-                const html = el.innerHTML?.trim()
-                if (html) blocks.push({ type: 'paragraph', text: html })
-              } else {
-                const text = el.textContent?.trim()
-                if (text) blocks.push({ type: 'paragraph', text })
-              }
-            }
-          }
-        } else if (tagName === 'br') {
-          // Skip line breaks
-        } else {
-          // Fallback: treat unknown elements as paragraphs
-          const text = el.textContent?.trim()
-          if (text) blocks.push({ type: 'paragraph', text })
-        }
-      }
-    })
-    
-    return blocks
-  }
-
-  function handleEditorInput() {
-    normalizeEditorContent()
-    contentBlocks = parseEditorContent()
-    scheduleAutoSave()
-  }
-
-  function normalizeEditorContent() {
-    if (!editorElement) return
-    
-    // Wrap loose text nodes in <p> tags to ensure proper spacing
-    const children = Array.from(editorElement.childNodes)
-    
-    for (let i = 0; i < children.length; i++) {
-      const node = children[i]
-      
-      // Skip if already a proper block element
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        const tag = el.tagName.toLowerCase()
-        if (['p', 'h2', 'figure', 'ul', 'ol', 'hr'].includes(tag)) {
-          continue
-        }
-      }
-      
-      // If it's a text node with content, wrap in <p>
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = (node as Text).textContent || ''
-        if (text.trim().length > 0) {
-          const p = document.createElement('p')
-          p.appendChild(node.cloneNode(true))
-          editorElement.replaceChild(p, node)
-        }
-      }
-    }
-  }
-
-  function handleEditorPaste(event: ClipboardEvent) {
-    event.preventDefault()
-    const text = event.clipboardData?.getData('text/plain') || ''
-    document.execCommand('insertText', false, text)
   }
 
   function scheduleAutoSave() {
@@ -536,7 +322,7 @@
       title,
       featuredImageUrl,
       featuredImageCaption,
-      contentBlocks,
+      contentHtml: getEditorHtml(),
       savedAt: Date.now()
     }
     localStorage.setItem(key, JSON.stringify(data))
@@ -546,11 +332,12 @@
     if (!$session || !title.trim()) return null
     saving = true
 
+    const contentHtml = getEditorHtml()
     const storyData = {
       title,
       summary: '',
       featuredImageUrl,
-      content: { blocks: contentBlocks },
+      content: { html: contentHtml },
       publicationName: $session.publicationName || 'Unassigned'
     }
 
@@ -569,7 +356,7 @@
           title,
           summary: '',
           featuredImageUrl,
-          content: { blocks: contentBlocks },
+          content: { html: contentHtml },
           status: 'draft'
         })
         if (result.error) throw new Error(result.error)
@@ -606,381 +393,58 @@
 
   async function handleInlineImageUpload(event: Event) {
     const input = event.target as HTMLInputElement
-    if (!input.files?.length) return
+    if (!input.files?.length || !quillInstance) return
 
     const file = input.files[0]
     
-    // Save cursor position before upload
-    const selection = window.getSelection()
-    let insertRange: Range | null = null
-    if (selection && selection.rangeCount > 0 && editorElement?.contains(selection.anchorNode)) {
-      insertRange = selection.getRangeAt(0).cloneRange()
-    }
-    
-    // Create placeholder with loading spinner
-    const placeholder = document.createElement('div')
-    placeholder.className = 'image-placeholder mt-4 mb-2 aspect-video bg-[#efefef] rounded-lg flex items-center justify-center animate-pulse'
-    placeholder.contentEditable = 'false'
-    placeholder.innerHTML = `
-      <div class="flex flex-col items-center gap-2 text-[#999999]">
-        <svg class="w-8 h-8 animate-spin" viewBox="0 0 24 24" fill="none">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span class="text-sm">Uploading...</span>
-      </div>
-    `
-    
-    // Insert placeholder at editor level (not inside other elements)
-    if (insertRange && editorElement) {
-      // Find the top-level element containing the cursor
-      let insertAfter: Node | null = null
-      let node: Node | null = insertRange.commonAncestorContainer
-      while (node && node.parentNode !== editorElement) {
-        node = node.parentNode
-      }
-      if (node && node.parentNode === editorElement) {
-        insertAfter = node
-      }
-      
-      if (insertAfter) {
-        insertAfter.parentNode?.insertBefore(placeholder, insertAfter.nextSibling)
-      } else {
-        editorElement.appendChild(placeholder)
-      }
-    } else if (editorElement) {
-      editorElement.appendChild(placeholder)
-    }
-    
     try {
       const result = await uploadImage(file)
-      
-      // Create figure element
-      const figure = document.createElement('figure')
-      figure.className = 'image-figure relative my-4'
-      figure.style.margin = '1rem 0'
-      figure.contentEditable = 'false'
-      figure.dataset.url = result.url
-      
-      const imgWrapper = document.createElement('div')
-      imgWrapper.className = 'relative'
-      
-      const img = document.createElement('img')
-      img.src = getOptimizedUrl(result.url)
-      img.alt = ''
-      img.className = 'w-full rounded-lg opacity-0 transition-opacity duration-300'
-      img.onload = () => {
-        img.classList.remove('opacity-0')
-        img.classList.add('opacity-100')
+      if (result.url) {
+        const range = quillInstance.getSelection(true)
+        quillInstance.insertEmbed(range.index, 'image', getOptimizedUrl(result.url))
+        quillInstance.setSelection(range.index + 1)
       }
-      
-      const deleteBtn = document.createElement('button')
-      deleteBtn.className = 'delete-media absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors'
-      deleteBtn.setAttribute('aria-label', 'Remove image')
-      deleteBtn.innerHTML = '<img src="/icons/icon-close.svg" alt="" class="w-3 h-3 invert" />'
-      deleteBtn.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        figure.remove()
-        handleEditorInput()
-        scheduleAutoSave()
-      })
-      
-      imgWrapper.appendChild(img)
-      imgWrapper.appendChild(deleteBtn)
-      
-      figure.appendChild(imgWrapper)
-      
-      // Replace placeholder with actual image
-      placeholder.replaceWith(figure)
-      
-      // Always add an empty paragraph after the figure for typing
-      let newPara: HTMLParagraphElement
-      const nextSibling = figure.nextSibling
-      if (!nextSibling || (nextSibling.nodeType === Node.ELEMENT_NODE && (nextSibling as HTMLElement).tagName.toLowerCase() === 'figure')) {
-        newPara = document.createElement('p')
-        newPara.className = 'mb-4'
-        newPara.innerHTML = '<br>'  // Use <br> for empty editable paragraph
-        figure.insertAdjacentElement('afterend', newPara)
-      } else {
-        newPara = nextSibling as HTMLParagraphElement
-      }
-      
-      // Move cursor to the paragraph after the image
-      setTimeout(() => {
-        const selection = window.getSelection()
-        if (selection && newPara) {
-          const range = document.createRange()
-          range.selectNodeContents(newPara)
-          range.collapse(true)  // Collapse to start
-          selection.removeAllRanges()
-          selection.addRange(range)
-          newPara.focus()
-        }
-      }, 0)
-      
-      handleEditorInput()
-      scheduleAutoSave()
     } catch {
-      placeholder.remove()
       showNotification('error', 'Failed to upload image')
     }
     input.value = ''
   }
 
-  function insertHeading() {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
+  async function handleVideoUpload(event: Event) {
+    const input = event.target as HTMLInputElement
+    if (!input.files?.length || !quillInstance) return
+
+    const file = input.files[0]
     
-    const range = selection.getRangeAt(0)
+    // Check file size (100MB limit on free Cloudinary plan)
+    if (file.size > 100 * 1024 * 1024) {
+      showNotification('error', 'Video must be under 100MB')
+      input.value = ''
+      return
+    }
     
-    // Check if we're already in a heading - if so, convert back to paragraph
-    let node: Node | null = range.commonAncestorContainer
-    let h2Element: HTMLElement | null = null
+    uploadingVideo = true
     
-    while (node && node !== editorElement) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        if (el.tagName.toLowerCase() === 'h2') {
-          h2Element = el
-          break
-        }
+    try {
+      const result = await uploadVideo(file)
+      if (result.error) {
+        showNotification('error', result.error)
+      } else if (result.url) {
+        const range = quillInstance.getSelection(true)
+        quillInstance.insertEmbed(range.index, 'cloudinary-video', result.url)
+        quillInstance.setSelection(range.index + 1)
+        scheduleAutoSave()
       }
-      node = node.parentNode
+    } catch {
+      showNotification('error', 'Failed to upload video')
     }
     
-    if (h2Element) {
-      // Convert heading back to paragraph
-      const p = document.createElement('p')
-      p.textContent = h2Element.textContent || ''
-      p.className = 'mb-4'
-      h2Element.replaceWith(p)
-      
-      // Restore selection in the new paragraph
-      const newRange = document.createRange()
-      newRange.selectNodeContents(p)
-      selection.removeAllRanges()
-      selection.addRange(newRange)
-    } else {
-      // Convert selected text to heading
-      const existingText = selection.toString().trim()
-      const h2 = document.createElement('h2')
-      h2.textContent = existingText || 'Subhead'
-      h2.className = 'text-xl font-bold my-4'
-      
-      if (existingText) {
-        selection.deleteFromDocument()
-      }
-      
-      range.insertNode(h2)
-      
-      // If we inserted placeholder text, select it so user can type to replace
-      if (!existingText) {
-        const newRange = document.createRange()
-        newRange.selectNodeContents(h2)
-        selection.removeAllRanges()
-        selection.addRange(newRange)
-      }
-    }
-    
-    handleEditorInput()
-  }
-
-  function insertBold() {
-    // Check if we're in a heading - if so, do nothing
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    let node: Node | null = selection.getRangeAt(0).commonAncestorContainer
-    while (node && node !== editorElement) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        if (el.tagName.toLowerCase() === 'h2') {
-          return // Don't apply bold to headings
-        }
-      }
-      node = node.parentNode
-    }
-
-    document.execCommand('bold', false)
-    handleEditorInput()
-  }
-
-  function insertSeparator() {
-    const hr = document.createElement('hr')
-    hr.className = 'w-1/2 mx-auto my-4 border-[#999999]'
-    
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      range.insertNode(hr)
-    } else if (editorElement) {
-      editorElement.appendChild(hr)
-    }
-    
-    handleEditorInput()
-  }
-
-  function openYouTubeModal() {
-    // Save current selection/range before opening modal
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0 && editorElement?.contains(selection.anchorNode)) {
-      savedRange = selection.getRangeAt(0).cloneRange()
-    } else {
-      savedRange = null
-    }
-    showYouTubeModal = true
-  }
-
-  function handleYouTubeAdd(event: CustomEvent<{ url: string; thumbnailUrl?: string }>) {
-    const { url, thumbnailUrl } = event.detail
-    const videoId = extractYouTubeId(url)
-    
-    // Create YouTube embed element
-    const videoDiv = document.createElement('div')
-    videoDiv.className = 'youtube-embed relative mb-4 aspect-video bg-[#efefef] rounded-lg'
-    videoDiv.contentEditable = 'false'
-    videoDiv.innerHTML = `
-      <iframe 
-        src="https://www.youtube.com/embed/${videoId}" 
-        class="w-full h-full rounded-lg"
-        frameborder="0" 
-        allowfullscreen
-      ></iframe>
-      <button 
-        class="delete-media absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-        aria-label="Remove video"
-      >
-        <img src="/icons/icon-close.svg" alt="" class="w-3 h-3 invert" />
-      </button>
-    `
-    videoDiv.dataset.youtubeUrl = url
-    if (thumbnailUrl) videoDiv.dataset.thumbnailUrl = thumbnailUrl
-    
-    // Add delete handler
-    const deleteBtn = videoDiv.querySelector('.delete-media')
-    deleteBtn?.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      videoDiv.remove()
-      handleEditorInput()
-      scheduleAutoSave()
-    })
-    
-    // Insert at saved cursor position or end
-    if (savedRange && editorElement?.contains(savedRange.commonAncestorContainer)) {
-      savedRange.insertNode(videoDiv)
-      savedRange.setStartAfter(videoDiv)
-      savedRange.collapse(true)
-    } else if (editorElement) {
-      editorElement.appendChild(videoDiv)
-    }
-    
-    savedRange = null
-    handleEditorInput()
-    scheduleAutoSave()
-    showYouTubeModal = false
-  }
-
-  function openLinkModal() {
-    const selection = window.getSelection()
-    selectedText = selection?.toString() || ''
-    
-    // Save current selection/range before opening modal
-    if (selection && selection.rangeCount > 0 && editorElement?.contains(selection.anchorNode)) {
-      savedRange = selection.getRangeAt(0).cloneRange()
-    } else {
-      savedRange = null
-    }
-    showLinkModal = true
-  }
-
-  function handleLinkAdd(event: CustomEvent<{ text: string; url: string; color: string }>) {
-    const { text, url, color } = event.detail
-    
-    // Create link element
-    const link = document.createElement('a')
-    link.href = url
-    link.target = '_blank'
-    link.style.color = `#${color}`
-    link.style.textDecoration = 'none'
-    link.textContent = text
-    
-    // If we have a saved range with selected text, replace it
-    if (savedRange && editorElement?.contains(savedRange.commonAncestorContainer)) {
-      // Delete any selected content first
-      savedRange.deleteContents()
-      savedRange.insertNode(link)
-      savedRange.setStartAfter(link)
-      savedRange.collapse(true)
-      
-      // Restore selection
-      const selection = window.getSelection()
-      if (selection) {
-        selection.removeAllRanges()
-        selection.addRange(savedRange)
-      }
-    } else if (editorElement) {
-      // Insert at end as fallback
-      const p = document.createElement('p')
-      p.className = 'mb-4'
-      p.appendChild(link)
-      editorElement.appendChild(p)
-    }
-    
-    savedRange = null
-    handleEditorInput()
-    scheduleAutoSave()
-    showLinkModal = false
-  }
-
-  function removeLink() {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    let linkElement: HTMLElement | null = null
-    let node: Node | null = range.commonAncestorContainer
-
-    // Walk up to find the link element
-    while (node && node !== editorElement) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        if (el.tagName.toLowerCase() === 'a') {
-          linkElement = el
-          break
-        }
-      }
-      node = node.parentNode
-    }
-
-    if (!linkElement) return
-
-    // Get the link text
-    const linkText = linkElement.textContent || ''
-
-    // Create a text node with the link text
-    const textNode = document.createTextNode(linkText)
-
-    // Replace the link with the text
-    linkElement.replaceWith(textNode)
-
-    handleEditorInput()
-    scheduleAutoSave()
-
-    // Deselect to immediately reset link state in toolbar
-    selection.removeAllRanges()
+    uploadingVideo = false
+    input.value = ''
   }
 
   function openPreview() {
-    // Ensure contentBlocks is up-to-date before opening preview
-    contentBlocks = parseEditorContent()
-    console.log('=== PREVIEW DEBUG ===')
-    console.log('title:', title)
-    console.log('contentBlocks:', contentBlocks)
-    console.log('editorElement:', editorElement)
-    console.log('editorElement.innerHTML:', editorElement?.innerHTML)
-    console.log('editorElement.childNodes:', editorElement?.childNodes)
+    const html = getEditorHtml()
     previewDrawerOpen.set(true)
   }
 
@@ -1004,7 +468,6 @@
       return
     }
     
-    // Log the publish action
     if ($session) {
       await logActivity(
         $session.courseId,
@@ -1017,8 +480,6 @@
     }
     
     showNotification('success', 'Published!')
-    
-    // Release lock and close
     await releaseAndClose()
   }
 
@@ -1030,7 +491,6 @@
       return
     }
     
-    // Log the edit action
     if ($session && isEditingExisting) {
       await logActivity(
         $session.courseId,
@@ -1043,17 +503,20 @@
     }
     
     showNotification('success', 'Changes saved!')
-    
-    // Release lock and close
     await releaseAndClose()
   }
 
   async function releaseAndClose() {
-    // Release lock if we have one
     if ($editingStory.id && !isLocked) {
       await releaseLock($editingStory.id)
     }
     clearLockRefreshTimer()
+    
+    // Destroy Quill instance
+    if (quillInstance) {
+      quillInstance = null
+    }
+    
     editingStory.reset()
     writeDrawerOpen.set(false)
     showPublishToolbar = false
@@ -1072,6 +535,9 @@
   }
 
   function handleLockGoBack() {
+    if (quillInstance) {
+      quillInstance = null
+    }
     editingStory.reset()
     writeDrawerOpen.set(false)
   }
@@ -1092,20 +558,22 @@
   }
 
   function hexToFilter(hex: string): string {
-    // Mapping of color palettes to their filter values
     const colorFilters: Record<string, string> = {
-      '5422b0': 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%)',     // Indigo
-      '02441f': 'invert(25%) sepia(100%) saturate(1500%) hue-rotate(120deg) brightness(40%) contrast(100%)',    // Black Forest
-      '004269': 'invert(20%) sepia(100%) saturate(2000%) hue-rotate(200deg) brightness(50%) contrast(95%)',      // Yale Blue
-      '935D00': 'invert(35%) sepia(90%) saturate(1200%) hue-rotate(30deg) brightness(70%) contrast(85%)',        // Golden Earth
-      '801c00': 'invert(25%) sepia(100%) saturate(2500%) hue-rotate(10deg) brightness(50%) contrast(100%)',      // Molten Lava
-      'ab0000': 'invert(20%) sepia(100%) saturate(3000%) hue-rotate(0deg) brightness(50%) contrast(100%)',       // Inferno
-      '333333': 'invert(18%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(45%) contrast(90%)'             // Graphite
+      '5422b0': 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%)',
+      '02441f': 'invert(25%) sepia(100%) saturate(1500%) hue-rotate(120deg) brightness(40%) contrast(100%)',
+      '004269': 'invert(20%) sepia(100%) saturate(2000%) hue-rotate(200deg) brightness(50%) contrast(95%)',
+      '935D00': 'invert(35%) sepia(90%) saturate(1200%) hue-rotate(30deg) brightness(70%) contrast(85%)',
+      '801c00': 'invert(25%) sepia(100%) saturate(2500%) hue-rotate(10deg) brightness(50%) contrast(100%)',
+      'ab0000': 'invert(20%) sepia(100%) saturate(3000%) hue-rotate(0deg) brightness(50%) contrast(100%)',
+      '333333': 'invert(18%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(45%) contrast(90%)'
     }
     
     const cleanHex = hex.replace('#', '').toLowerCase()
     return colorFilters[cleanHex] || 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%)'
   }
+
+  // Reactive word count
+  $: wordCount = getWordCount()
 </script>
 
 {#if $writeDrawerOpen}
@@ -1130,7 +598,9 @@
       </button>
       
       <div class="flex items-center gap-2 text-sm text-[#777777]">
-        {#if saving}
+        {#if uploadingVideo}
+          <span>Uploading video...</span>
+        {:else if saving}
           <span>Saving...</span>
         {:else if lastSavedTime}
           <span>{formatTimeAgo(lastSavedTime)}</span>
@@ -1143,11 +613,11 @@
       class="flex-1 px-4 overflow-y-auto pb-4"
       style={isKeyboardVisible ? `padding-bottom: 80px;` : ''}
     >
-      <!-- Title Input (Scrolls with content) -->
+      <!-- Title Input -->
       <div class="bg-white -mx-4 px-4 py-4 pt-5">
         <textarea
           bind:value={title}
-          on:input={scheduleAutoSave}
+          on:input={() => scheduleAutoSave()}
           placeholder="Title"
           class="title-input w-full text-2xl font-semibold text-[#333333] outline-none placeholder:text-[#999999] resize-none overflow-hidden"
           rows="1"
@@ -1179,25 +649,21 @@
             <input
               type="text"
               bind:value={featuredImageCaption}
-              on:input={scheduleAutoSave}
+              on:input={() => scheduleAutoSave()}
               placeholder="Tap to add caption"
               class="w-full text-sm text-center text-[#777777] mt-2 outline-none placeholder:text-[#999999]"
             />
           </div>
         {/if}
 
-        <!-- Rich Text Editor -->
+        <!-- Quill Editor -->
         <div
-          bind:this={editorElement}
-          contenteditable="true"
-          on:input={handleEditorInput}
-          on:paste={handleEditorPaste}
-          class="editor-content min-h-[200px] outline-none text-base text-[#333333] leading-relaxed -mt-2"
-          data-placeholder="Text"
+          bind:this={editorContainer}
+          class="editor-content relative min-h-[200px] text-base text-[#333333] leading-relaxed -mt-2"
         ></div>
       </div>
 
-      <!-- Word Count - only show when > 0 -->
+      <!-- Word Count -->
       {#if wordCount > 0}
         <div class="text-sm text-[#777777] mt-2 text-right">
           {wordCount} {wordCount === 1 ? 'word' : 'words'}
@@ -1205,14 +671,14 @@
       {/if}
     </main>
 
-    <!-- Bottom Toolbar Wrapper - fixed above keyboard when visible -->
+    <!-- Bottom Toolbar Wrapper -->
     <div 
       class="toolbar-wrapper shrink-0 bg-white max-w-[480px] w-full"
       class:fixed={isKeyboardVisible}
       class:z-[60]={isKeyboardVisible}
       style={isKeyboardVisible ? `left: 50%; transform: translateX(-50%); bottom: ${toolbarBottomPosition}px;` : ''}
     >
-      <!-- Publish Toolbar (when active) -->
+      <!-- Publish Toolbar -->
       {#if showPublishToolbar}
         <div class="px-4 pb-2" transition:fly={{ y: 20, duration: 150 }}>
           <div class="flex items-center gap-3 rounded-full px-4 py-2 w-fit ml-auto" style="background-color: #{$teamColors.primary};">
@@ -1234,7 +700,7 @@
         </div>
       {/if}
 
-      <!-- Save Changes Toolbar (when active, for published stories) -->
+      <!-- Save Changes Toolbar -->
       {#if showSaveToolbar}
         <div class="px-4 pb-2" transition:fly={{ y: 20, duration: 150 }}>
           <div class="flex items-center gap-3 rounded-full px-4 py-2 w-fit ml-auto" style="background-color: #{$teamColors.primary};">
@@ -1277,68 +743,30 @@
           />
 
           <button 
-            on:click={insertHeading} 
-            class="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-150"
-            style={isHeadingActive ? `background-color: #${$teamColors.secondary};` : ''}
-            aria-label="Add subhead"
+            on:click={() => videoFileInput.click()} 
+            class="p-2" 
+            aria-label="Add video"
+            disabled={uploadingVideo}
           >
             <img
-              src="/icons/icon-heading.svg"
-              alt=""
-              class="w-5 h-5 transition-transform duration-150"
-              class:scale-110={isHeadingActive}
-              style={isHeadingActive 
-                ? `filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);` 
-                : "filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"}
-            />
-          </button>
-
-          <button 
-            on:click={insertBold} 
-            class="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-150"
-            style={isBoldActive ? `background-color: #${$teamColors.secondary};` : ''}
-            aria-label="Bold text"
-          >
-            <img
-              src="/icons/icon-bold.svg"
-              alt=""
-              class="w-5 h-5 transition-transform duration-150"
-              class:scale-110={isBoldActive}
-              style={isBoldActive 
-                ? `filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);` 
-                : "filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"}
-            />
-          </button>
-
-          <button on:click={insertSeparator} class="p-2" aria-label="Add separator">
-            <img
-              src="/icons/icon-separator.svg"
+              src="/icons/icon-video.svg"
               alt=""
               class="w-5 h-5"
+              class:animate-pulse={uploadingVideo}
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
             />
           </button>
+          <input
+            bind:this={videoFileInput}
+            type="file"
+            accept="video/*"
+            class="hidden"
+            on:change={handleVideoUpload}
+          />
 
-          <button 
-            on:click={isLinkActive ? removeLink : openLinkModal}
-            class="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-150"
-            style={isLinkActive ? `background-color: #${$teamColors.secondary};` : ''}
-            aria-label={isLinkActive ? "Remove link" : "Add link"}
-          >
+          <button on:click={() => fileInput.click()} class="p-2" aria-label="Featured image">
             <img
-              src={isLinkActive ? "/icons/icon-unlink.svg" : "/icons/icon-link.svg"}
-              alt=""
-              class="w-5 h-5 transition-transform duration-150"
-              class:scale-110={isLinkActive}
-              style={isLinkActive 
-                ? `filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);` 
-                : "filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"}
-            />
-          </button>
-
-          <button on:click={openYouTubeModal} class="p-2" aria-label="Add YouTube">
-            <img
-              src="/icons/icon-youtube.svg"
+              src="/icons/icon-upload.svg"
               alt=""
               class="w-5 h-5"
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
@@ -1358,7 +786,6 @@
             />
           </button>
           {#if isPublishedStory}
-            <!-- Save icon for editing published stories -->
             <button
               on:click={toggleSaveToolbar}
               class="p-2 outline-none focus:outline-none"
@@ -1372,7 +799,6 @@
               />
             </button>
           {:else}
-            <!-- Publish button for drafts -->
             <button
               on:click={togglePublishToolbar}
               class="p-2 outline-none focus:outline-none"
@@ -1401,28 +827,14 @@
     />
   </div>
 
-  <!-- Modals -->
-  <YouTubeModal
-    open={showYouTubeModal}
-    on:add={handleYouTubeAdd}
-    on:close={() => showYouTubeModal = false}
-  />
-
-  <LinkModal
-    open={showLinkModal}
-    initialText={selectedText}
-    on:add={handleLinkAdd}
-    on:close={() => showLinkModal = false}
-  />
-
-  <!-- Preview Drawer - only mount when open to ensure fresh props -->
+  <!-- Preview Drawer -->
   {#if $previewDrawerOpen}
     <PreviewDrawer
       {title}
       summary=""
       {featuredImageUrl}
       {featuredImageCaption}
-      {contentBlocks}
+      contentHtml={getEditorHtml()}
     />
   {/if}
 
@@ -1433,46 +845,143 @@
 {/if}
 
 <style>
-  [data-placeholder]:empty:before {
-    content: attr(data-placeholder);
-    color: #999999;
-  }
-
   .title-input {
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
   }
 
-  .editor-content :global(p) {
-    margin-bottom: 1rem;
-    margin-top: 0;
+  .title-input::selection {
+    background-color: var(--selection-color) !important;
   }
 
-  .editor-content :global(h2) {
+  /* Quill Bubble theme overrides for our app */
+  .editor-content :global(.ql-editor) {
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1.625;
+    color: #333333;
+    min-height: 200px;
+  }
+
+  .editor-content :global(.ql-editor.ql-blank::before) {
+    color: #999999;
+    font-style: normal;
+    left: 0;
+    right: 0;
+  }
+
+  .editor-content :global(.ql-editor p) {
+    margin-bottom: 1rem;
+  }
+
+  .editor-content :global(.ql-editor strong) {
+    font-weight: 700;
+  }
+
+  .editor-content :global(.ql-editor em) {
+    font-style: italic;
+  }
+
+  .editor-content :global(.ql-editor u) {
+    text-decoration: underline;
+  }
+
+  .editor-content :global(.ql-editor h2) {
+    font-size: 1.25rem;
+    font-weight: 700;
     margin-top: 1rem;
     margin-bottom: 1rem;
   }
 
-  .editor-content :global(figure) {
-    margin-bottom: 1rem;
+  .editor-content :global(.ql-editor img) {
+    max-width: 100%;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
   }
 
-  .editor-content :global(ul),
-  .editor-content :global(ol) {
-    margin-bottom: 1rem;
+  .editor-content :global(.ql-editor .ql-video-wrapper) {
+    margin: 1rem 0;
   }
 
-  .editor-content :global(hr) {
-    margin-bottom: 1rem;
+  .editor-content :global(.ql-editor video) {
+    max-width: 100%;
+    border-radius: 0.5rem;
   }
 
-  .editor-content::selection,
+  .editor-content :global(.ql-editor a) {
+    text-decoration: underline;
+  }
+
+  .editor-content :global(.ql-editor hr) {
+    border: none;
+    border-top: 1px solid #999999;
+    width: 50%;
+    margin: 1.5rem auto;
+  }
+
+  /* Bubble tooltip (toolbar) styling */
+  .editor-content :global(.ql-tooltip) {
+    display: block !important;
+  }
+
+  .editor-content :global(.ql-tooltip.ql-hidden) {
+    display: block !important;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip) {
+    position: fixed;
+    z-index: 70;
+    background-color: #333333;
+    border-radius: 4px;
+    color: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .editor-content :global(.ql-toolbar) {
+    width: auto !important;
+    background: transparent;
+    border: none;
+    display: flex !important;
+    min-width: 200px;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip-arrow) {
+    display: block;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip button) {
+    color: white;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip button svg) {
+    fill: white !important;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip button:hover) {
+    color: #ffffff;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip button.ql-active) {
+    color: #ffffff;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip-editor input) {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+  }
+
+  .editor-content :global(.ql-bubble .ql-tooltip-editor input::placeholder) {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .editor-content :global(.ql-out-bottom),
+  .editor-content :global(.ql-out-top) {
+    visibility: visible !important;
+  }
+
   .editor-content :global(*)::selection {
-    background-color: var(--selection-color) !important;
-  }
-
-  .title-input::selection {
     background-color: var(--selection-color) !important;
   }
 </style>

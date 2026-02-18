@@ -209,8 +209,9 @@
         summary: story.summary || '',
         featuredImageUrl: story.featured_image_url,
         featuredImageCaption: '',
-        content: story.content?.blocks || [],
-        teamName: story.publication_name,
+        content: story.content && 'blocks' in story.content ? story.content.blocks : [],
+        contentHtml: story.content && 'html' in story.content ? story.content.html : '',
+        publicationName: story.publication_name,
         status: story.status
       })
       writeDrawerOpen.set(true)

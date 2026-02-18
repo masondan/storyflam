@@ -65,6 +65,7 @@ export interface EditingStory {
   featuredImageUrl: string | null
   featuredImageCaption: string
   content: import('./types').ContentBlock[]
+  contentHtml: string
   publicationName: string
   status: 'draft' | 'published'
   isDirty: boolean
@@ -77,6 +78,7 @@ const emptyStory: EditingStory = {
   featuredImageUrl: null,
   featuredImageCaption: '',
   content: [],
+  contentHtml: '',
   publicationName: '',
   status: 'draft',
   isDirty: false,

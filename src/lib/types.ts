@@ -51,7 +51,7 @@ export interface Story {
   title: string
   summary: string | null
   featured_image_url: string | null
-  content: { blocks: ContentBlock[] } | null
+  content: { blocks: ContentBlock[] } | { html: string } | null
   status: 'draft' | 'published'
   is_pinned: boolean
   pin_index: number | null
@@ -63,7 +63,7 @@ export interface Story {
 }
 
 export interface ContentBlock {
-  type: 'paragraph' | 'heading' | 'bold' | 'list' | 'separator' | 'image' | 'youtube' | 'vimeo' | 'link'
+  type: 'paragraph' | 'heading' | 'bold' | 'list' | 'separator' | 'image' | 'youtube' | 'vimeo' | 'link' | 'video'
   text?: string
   items?: string[]
   listType?: 'ordered' | 'unordered'
@@ -71,7 +71,16 @@ export interface ContentBlock {
   width?: number
   height?: number
   aspectRatio?: string
+  caption?: string
   thumbnailUrl?: string
   title?: string
   color?: string
+}
+
+export function isHtmlContent(content: Story['content']): content is { html: string } {
+  return content !== null && 'html' in content
+}
+
+export function isBlockContent(content: Story['content']): content is { blocks: ContentBlock[] } {
+  return content !== null && 'blocks' in content
 }

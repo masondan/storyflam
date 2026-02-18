@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",
-    "jspdf": "^3.0.4"
+    "jspdf": "^3.0.4",
+    "quill": "^2.0.3"
   }
 }

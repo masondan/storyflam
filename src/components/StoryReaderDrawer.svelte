@@ -2,7 +2,7 @@
   import { storyReaderDrawerOpen, currentViewingStory, session } from '$lib/stores'
   import { fly } from 'svelte/transition'
   import { getOptimizedUrl } from '$lib/cloudinary'
-  import type { ContentBlock } from '$lib/types'
+  import { renderContent } from '$lib/content'
 
   export let teamName = 'StoryFlam Publication'
   export let teamLogoUrl: string | null = null
@@ -17,7 +17,7 @@
   $: authorName = storyData?.author_name || 'Unknown'
   $: title = storyData?.title || ''
   $: featuredImageUrl = storyData?.featured_image_url
-  $: contentBlocks = storyData?.content?.blocks || []
+  $: storyContent = storyData?.content || null
 
   function closeDrawer() {
     storyReaderDrawerOpen.set(false)
@@ -31,43 +31,6 @@
     headerOpacity = Math.max(0.3, 1 - scrollY / 100)
   }
 
-  function extractYouTubeId(url: string): string {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
-    return match ? match[1] : ''
-  }
-
-  function renderBlock(block: ContentBlock): string {
-    switch (block.type) {
-      case 'paragraph':
-        return `<p class="mb-4 text-base text-[#333333] leading-relaxed">${escapeHtml(block.text || '')}</p>`
-      case 'heading':
-        return `<h2 class="text-xl font-bold my-4 text-black">${escapeHtml(block.text || '')}</h2>`
-      case 'bold':
-        return `<p class="mb-4 text-base text-[#333333] leading-relaxed"><strong>${escapeHtml(block.text || '')}</strong></p>`
-      case 'list':
-        const tag = block.listType === 'ordered' ? 'ol' : 'ul'
-        const listClass = block.listType === 'ordered' ? 'list-decimal' : 'list-disc'
-        const items = (block.items || []).map(item => `<li>${escapeHtml(item)}</li>`).join('')
-        return `<${tag} class="${listClass} ml-6 mb-4 text-base text-[#333333]">${items}</${tag}>`
-      case 'separator':
-        return `<hr class="w-1/2 mx-auto my-6 border-[#999999]" />`
-      case 'image':
-        return `<figure class="my-4"><img src="${getOptimizedUrl(block.url || '')}" alt="" class="w-full rounded-lg" /></figure>`
-      case 'youtube':
-        const videoId = extractYouTubeId(block.url || '')
-        return `<div class="my-4 aspect-video"><iframe src="https://www.youtube.com/embed/${videoId}" class="w-full h-full rounded-lg" frameborder="0" allowfullscreen></iframe></div>`
-      case 'link':
-        return `<a href="${block.url}" target="_blank" style="color: #${block.color || primaryColor};" class="hover:underline">${escapeHtml(block.text || '')}</a>`
-      default:
-        return ''
-    }
-  }
-
-  function escapeHtml(text: string): string {
-    const div = document.createElement('div')
-    div.textContent = text
-    return div.innerHTML
-  }
 </script>
 
 {#if $storyReaderDrawerOpen}
@@ -122,9 +85,7 @@
           
           <!-- Content Blocks -->
           <div class="story-content">
-            {#each contentBlocks as block}
-              {@html renderBlock(block)}
-            {/each}
+            {@html renderContent(storyContent, primaryColor)}
           </div>
         </article>
       {:else}

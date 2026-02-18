@@ -2,13 +2,13 @@
   import { fly } from 'svelte/transition'
   import { previewDrawerOpen, session, teamColors } from '$lib/stores'
   import { getOptimizedUrl } from '$lib/cloudinary'
-  import type { ContentBlock } from '$lib/types'
+  import { renderContent } from '$lib/content'
 
   export let title = ''
   export let summary = ''
   export let featuredImageUrl: string | null = null
   export let featuredImageCaption = ''
-  export let contentBlocks: ContentBlock[] = []
+  export let contentHtml: string = ''
   export let teamName: string | null = null
   export let teamLogoUrl: string | null = null
 
@@ -17,7 +17,6 @@
 
   $: displayTeamName = teamName || $session?.publicationName || 'StoryFlam Publication'
   $: authorName = $session?.name || 'Journalist'
-  $: console.log('=== PREVIEW DRAWER RECEIVED ===', { title, contentBlocks, showEmpty: !title && contentBlocks.length === 0 })
 
   function closeDrawer() {
     previewDrawerOpen.set(false)
@@ -28,11 +27,6 @@
     scrollY = main.scrollTop
     // Reduce opacity as user scrolls down, min opacity at 100px
     headerOpacity = Math.max(0.3, 1 - scrollY / 100)
-  }
-
-  function extractYouTubeId(url: string): string {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
-    return match ? match[1] : ''
   }
 </script>
 
@@ -97,54 +91,14 @@
 
       <!-- Content Blocks -->
       <div class="prose prose-sm max-w-none text-[#333333]">
-        {#each contentBlocks as block}
-          {#if block.type === 'paragraph'}
-            <p class="mb-4">{@html block.text}</p>
-          {:else if block.type === 'heading'}
-            <h3 class="text-xl font-bold text-[#333333] mb-4">{@html block.text}</h3>
-          {:else if block.type === 'bold'}
-            <p class="mb-4"><strong>{@html block.text}</strong></p>
-          {:else if block.type === 'separator'}
-            <hr class="w-1/2 mx-auto my-6 border-[#999999]" />
-          {:else if block.type === 'image'}
-            <figure class="mb-4">
-              <img
-                src={getOptimizedUrl(block.url || '')}
-                alt=""
-                class="w-full rounded-lg"
-              />
-            </figure>
-          {:else if block.type === 'youtube'}
-            <div class="mb-4 aspect-video">
-              <iframe
-                src="https://www.youtube.com/embed/{extractYouTubeId(block.url || '')}"
-                class="w-full h-full rounded-lg"
-                frameborder="0"
-                allowfullscreen
-                title="YouTube video"
-              ></iframe>
-            </div>
-          {:else if block.type === 'link'}
-            <p class="mb-4">
-              <a
-                href={block.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="underline"
-                style="color: #{block.color || $teamColors.primary};"
-              >
-                {block.text}
-              </a>
-            </p>
-          {/if}
-        {/each}
+        {#if contentHtml}
+          {@html contentHtml}
+        {:else}
+          <div class="text-center text-[#999999] py-12">
+            <p>Nothing to preview yet.</p>
+            <p class="text-sm mt-2">Start writing to see your story here.</p>
+          </div>
+        {/if}
       </div>
-
-      {#if !title && contentBlocks.length === 0}
-        <div class="text-center text-[#999999] py-12">
-          <p>Nothing to preview yet.</p>
-          <p class="text-sm mt-2">Start writing to see your story here.</p>
-        </div>
-      {/if}
     </main>
   </div>

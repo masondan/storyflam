@@ -54,20 +54,24 @@
     dispatch('select', { id: story.id, selected: !selected })
   }
 
+  function getBlocks() {
+    if (story.content && 'blocks' in story.content) return story.content.blocks
+    return []
+  }
+
   // Check if story has an image (featured or in content)
   function hasImage(): boolean {
-    if (story.featured_image_url) {
-      return true
+    if (story.featured_image_url) return true
+    
+    // Check HTML content for images
+    if (story.content && 'html' in story.content) {
+      return story.content.html.includes('<img ')
     }
     
-    const blocks = story.content?.blocks || []
+    const blocks = getBlocks()
     for (const block of blocks) {
-      if (block.type === 'image' && block.url) {
-        return true
-      }
-      if (block.type === 'youtube' && block.thumbnailUrl) {
-        return true
-      }
+      if (block.type === 'image' && block.url) return true
+      if (block.type === 'youtube' && block.thumbnailUrl) return true
     }
     
     return !!fallbackImageUrl
@@ -79,15 +83,16 @@
       return getThumbnailUrl(story.featured_image_url)
     }
     
-    // Look for first image or youtube in content blocks
-    const blocks = story.content?.blocks || []
+    // Extract first image from HTML content
+    if (story.content && 'html' in story.content) {
+      const match = story.content.html.match(/src="([^"]+)"/)
+      if (match) return getThumbnailUrl(match[1])
+    }
+    
+    const blocks = getBlocks()
     for (const block of blocks) {
-      if (block.type === 'image' && block.url) {
-        return getThumbnailUrl(block.url)
-      }
-      if (block.type === 'youtube' && block.thumbnailUrl) {
-        return block.thumbnailUrl
-      }
+      if (block.type === 'image' && block.url) return getThumbnailUrl(block.url)
+      if (block.type === 'youtube' && block.thumbnailUrl) return block.thumbnailUrl
     }
     
     return fallbackImageUrl || '/logos/logo-storyflam-gen.svg'
@@ -97,7 +102,13 @@
   function getSnippet(): string {
     if (story.summary) return story.summary
     
-    const blocks = story.content?.blocks || []
+    // Extract text from HTML content
+    if (story.content && 'html' in story.content) {
+      const text = story.content.html.replace(/<[^>]+>/g, '').trim()
+      return text.substring(0, 200)
+    }
+    
+    const blocks = getBlocks()
     for (const block of blocks) {
       if ((block.type === 'paragraph' || block.type === 'bold') && block.text) {
         return block.text
