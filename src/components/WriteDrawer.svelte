@@ -19,9 +19,6 @@
   import LinkModal from './LinkModal.svelte'
 
   let title = ''
-  let featuredImageUrl: string | null = null
-  let featuredImageCaption = ''
-  let fileInput: HTMLInputElement
   let imageFileInput: HTMLInputElement
   let videoFileInput: HTMLInputElement
 
@@ -89,13 +86,9 @@
       }
       
       title = story.title
-      featuredImageUrl = story.featuredImageUrl
-      featuredImageCaption = story.featuredImageCaption
       lastSavedTime = story.lastSaved
     } else {
       title = ''
-      featuredImageUrl = null
-      featuredImageCaption = ''
       lastSavedTime = null
     }
     showPublishToolbar = false
@@ -152,17 +145,23 @@
       static create(value: string) {
         const node = super.create() as HTMLElement
         node.setAttribute('contenteditable', 'false')
-        node.classList.add('my-4', 'relative', 'group')
+        node.classList.add('my-4', 'relative', 'group', 'w-full')
+        // Set aspect ratio via inline style for consistent shimmer height
+        node.style.aspectRatio = '16/9'
         
         const video = document.createElement('video')
         video.setAttribute('playsinline', '')
-        video.classList.add('w-full', 'rounded-lg')
+        video.classList.add('w-full', 'h-full', 'rounded-lg', 'opacity-0')
+        video.style.pointerEvents = 'none'
         video.controls = false
         
-        const source = document.createElement('source')
-        source.setAttribute('src', getOptimizedVideoUrl(value))
-        source.setAttribute('type', 'video/mp4')
-        video.appendChild(source)
+        // Only create source element if value is a real URL, not a placeholder
+        if (value && !value.startsWith('video-placeholder-')) {
+          const source = document.createElement('source')
+          source.setAttribute('src', getOptimizedVideoUrl(value))
+          source.setAttribute('type', 'video/mp4')
+          video.appendChild(source)
+        }
         
         node.appendChild(video)
         node.dataset.videoUrl = value
@@ -289,8 +288,6 @@
     const key = `draft_${$session.courseId}_${$editingStory.id || 'new'}`
     const data = {
       title,
-      featuredImageUrl,
-      featuredImageCaption,
       contentHtml: getEditorHtml(),
       savedAt: Date.now()
     }
@@ -305,7 +302,6 @@
     const storyData = {
       title,
       summary: '',
-      featuredImageUrl,
       content: { html: contentHtml },
       publicationName: $session.publicationName || 'Unassigned'
     }
@@ -324,7 +320,6 @@
           authorName: $session.name,
           title,
           summary: '',
-          featuredImageUrl,
           content: { html: contentHtml },
           status: 'draft'
         })
@@ -343,21 +338,6 @@
     }
     saving = false
     return storyId
-  }
-
-  async function handleImageUpload(event: Event) {
-    const input = event.target as HTMLInputElement
-    if (!input.files?.length) return
-
-    const file = input.files[0]
-    try {
-      const result = await uploadImage(file)
-      featuredImageUrl = result.url
-      scheduleAutoSave()
-    } catch {
-      showNotification('error', 'Failed to upload image')
-    }
-    input.value = ''
   }
 
   async function handleInlineImageUpload(event: Event) {
@@ -400,26 +380,140 @@
     uploadingVideo = true
     
     try {
+      // Get current cursor position before we insert anything
+      const range = quillInstance.getSelection(true)
+      
+      // DEBUG: Log initial state
+      let initialVideos = quillInstance.root.querySelectorAll('[data-video-url]')
+      console.log(`[Video Upload] BEFORE insert: ${initialVideos.length} video elements`)
+      
+      // Insert a placeholder shimmer at the cursor position
+      // Use a video URL as placeholder to maintain type consistency
+      const placeholderId = `video-placeholder-${Date.now()}`
+      quillInstance.insertEmbed(range.index, 'cloudinary-video', placeholderId)
+      // Block embeds automatically create newlines; just move cursor after the embed
+      quillInstance.setSelection(range.index + 1)
+      
+      // Now get the placeholder element and add shimmer animation
+      const placeholderElement = quillInstance.root.querySelector(`[data-video-url="${placeholderId}"]`)
+      if (placeholderElement) {
+        placeholderElement.classList.add('animate-shimmer')
+      }
+      
+      // DEBUG: Check how many shimmer elements exist globally
+      const allShimmers = document.querySelectorAll('.animate-shimmer')
+      console.log(`[Video Upload] Elements with animate-shimmer class: ${allShimmers.length}`)
+      allShimmers.forEach((s, i) => {
+        console.log(`  Shimmer ${i}: ${s.tagName} ${s.className}`)
+      })
+      
+      // DEBUG: Log how many video wrappers exist
+      const allVideos = quillInstance.root.querySelectorAll('[data-video-url]')
+      console.log(`[Video Upload] AFTER insert: ${allVideos.length} video elements`)
+      allVideos.forEach((v, i) => {
+        const dataUrl = v.getAttribute('data-video-url')
+        const sourceUrl = v.querySelector('source')?.getAttribute('src')
+        console.log(`  Video ${i}:`)
+        console.log(`    data-video-url="${dataUrl}"`)
+        console.log(`    <source src="${sourceUrl}">`)
+        console.log(`    classes="${v.className}"`)
+      })
+      
+      // Upload in the background
       const result = await uploadVideo(file)
+      
       if (result.error) {
+        // Remove placeholder and show error
+        const toDelete = quillInstance.root.querySelector(`[data-video-url="${placeholderId}"]`)
+        if (toDelete) {
+          toDelete.remove()
+        }
         showNotification('error', result.error)
       } else if (result.url) {
-        const range = quillInstance.getSelection(true)
-        quillInstance.insertEmbed(range.index, 'cloudinary-video', result.url)
-        // Insert a new paragraph after the video and move cursor to it
-        quillInstance.insertText(range.index + 1, '\n')
-        quillInstance.setSelection(range.index + 2)
-        scheduleAutoSave()
-        // Initialize Plyr on the newly inserted video
-        await initEditorPlyr()
-      }
-    } catch {
-      showNotification('error', 'Failed to upload video')
-    }
-    
-    uploadingVideo = false
-    input.value = ''
-  }
+       // Replace the placeholder with the actual video URL
+       const placeholderNode = quillInstance.root.querySelector(`[data-video-url="${placeholderId}"]`)
+       console.log(`[Video Upload] Upload complete. Found placeholder node:`, !!placeholderNode)
+       if (placeholderNode) {
+         const video = placeholderNode.querySelector('video')
+         console.log(`[Video Upload] Found video element:`, !!video)
+         
+         // Update the dataset to the real URL
+         placeholderNode.dataset.videoUrl = result.url
+         console.log(`[Video Upload] Updated data-video-url to: ${result.url}`)
+         
+         // Create source element if it doesn't exist (it won't for placeholders)
+         let sourceElement = placeholderNode.querySelector('source')
+         if (!sourceElement && video) {
+           sourceElement = document.createElement('source')
+           sourceElement.setAttribute('type', 'video/mp4')
+           video.appendChild(sourceElement)
+         }
+         
+         // Update the source URL
+         if (sourceElement) {
+           sourceElement.setAttribute('src', getOptimizedVideoUrl(result.url))
+         }
+         
+         // Remove shimmer animation
+         placeholderNode.classList.remove('animate-shimmer')
+         
+         // Initialize Plyr on just this video instead of scanning entire editor
+         if (video) {
+           await tick()
+           const Plyr = (await import('plyr')).default
+           try {
+             const player = new Plyr(video, {
+               controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
+             })
+             
+             // Hide Plyr controls until video is ready
+             const plyrWrapper = video.closest('.plyr')
+             if (plyrWrapper) {
+               plyrWrapper.style.opacity = '0'
+               plyrWrapper.style.pointerEvents = 'none'
+             }
+             
+             // Show when ready
+             const onCanPlay = () => {
+               video.style.pointerEvents = 'auto'
+               video.classList.remove('opacity-0')
+               video.classList.add('animate-fade-in')
+               if (plyrWrapper) {
+                 plyrWrapper.style.opacity = '1'
+                 plyrWrapper.style.pointerEvents = 'auto'
+               }
+               video.removeEventListener('canplay', onCanPlay)
+             }
+             
+             video.addEventListener('canplay', onCanPlay)
+             video.addEventListener('error', onCanPlay, { once: true })
+           } catch (err) {
+             console.error('[Plyr] Failed to initialize:', err)
+           }
+         }
+       }
+       
+       // DEBUG: Final state
+       const finalVideos = quillInstance.root.querySelectorAll('[data-video-url]')
+       console.log(`[Video Upload] AFTER update: ${finalVideos.length} video elements`)
+       finalVideos.forEach((v, i) => {
+         const dataUrl = v.getAttribute('data-video-url')
+         const sourceUrl = v.querySelector('source')?.getAttribute('src')
+         console.log(`  Video ${i}:`)
+         console.log(`    data-video-url="${dataUrl}"`)
+         console.log(`    <source src="${sourceUrl}">`)
+         console.log(`    classes="${v.className}"`)
+       })
+       
+       scheduleAutoSave()
+       }
+       } catch {
+       showNotification('error', 'Failed to upload video')
+       }
+       
+       uploadingVideo = false
+       input.value = ''
+       }
 
   // Bottom toolbar formatting functions
   function toggleBold() {
@@ -594,11 +688,6 @@
     writeDrawerOpen.set(false)
   }
 
-  function removeFeaturedImage() {
-    featuredImageUrl = null
-    scheduleAutoSave()
-  }
-
   function formatTimeAgo(timestamp: number | null): string {
     if (!timestamp) return ''
     const seconds = Math.floor((Date.now() - timestamp) / 1000)
@@ -660,9 +749,9 @@
           <span>{formatTimeAgo(lastSavedTime)}</span>
         {/if}
       </div>
-    </header>
+      </header>
 
-    <!-- Content -->
+      <!-- Content -->
     <main 
       class="flex-1 px-4 overflow-y-auto pb-4"
       style={isKeyboardVisible ? `padding-bottom: 80px;` : ''}
@@ -684,60 +773,36 @@
         ></textarea>
       </div>
 
-      <div class="pt-0">
-        <!-- Featured Image -->
-        {#if featuredImageUrl}
-          <div class="relative">
-            <img
-              src={getOptimizedUrl(featuredImageUrl)}
-              alt="Featured"
-              class="w-full rounded-lg"
-            />
-            <button
-              on:click={removeFeaturedImage}
-              class="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center"
-              aria-label="Remove image"
-            >
-              <img src="/icons/icon-close.svg" alt="" class="w-3 h-3 invert" />
-            </button>
-            <input
-              type="text"
-              bind:value={featuredImageCaption}
-              on:input={() => scheduleAutoSave()}
-              placeholder="Tap to add caption"
-              class="w-full text-sm text-center text-[#777777] mt-2 outline-none placeholder:text-[#999999]"
-            />
-          </div>
-        {/if}
+      <div class="pt-0 relative">
 
         <!-- Quill Editor -->
-        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-        <div
-          class="relative"
-          style="min-height: calc(100vh - 280px);"
-        >
-          <div
-            bind:this={editorContainer}
-            class="editor-content relative text-base text-[#333333] leading-relaxed -mt-2 h-full"
-            on:click={(e) => {
-              handleMediaClick(e)
-              if (quillInstance) quillInstance.focus()
-            }}
-          ></div>
+         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+         <div
+           bind:this={editorContainer}
+           class="editor-content relative text-base text-[#333333] leading-relaxed -mt-2"
+           on:click={(e) => {
+             handleMediaClick(e)
+             if (quillInstance) quillInstance.focus()
+           }}
+         ></div>
 
-          <!-- Media Delete Button -->
-          {#if deleteOverlay}
-            <button
-              on:click={deleteMedia}
-              class="absolute w-8 h-8 rounded-full flex items-center justify-center z-50"
-              style="top: {deleteOverlay.element.offsetTop + 16}px; left: {deleteOverlay.element.offsetLeft + deleteOverlay.element.offsetWidth - 46}px; background-color: #777777;"
-              aria-label="Delete {deleteOverlay.type}"
-            >
-              <img src="/icons/icon-close.svg" alt="" class="w-4 h-4 invert" />
-            </button>
-          {/if}
-        </div>
+         <!-- Media Delete Button -->
+         {#if deleteOverlay}
+           <button
+             on:click={deleteMedia}
+             class="absolute w-8 h-8 rounded-full flex items-center justify-center z-50"
+             style="top: {deleteOverlay.element.offsetTop + 16}px; left: {deleteOverlay.element.offsetLeft + deleteOverlay.element.offsetWidth - 46}px; background-color: #777777;"
+             aria-label="Delete {deleteOverlay.type}"
+           >
+             <img src="/icons/icon-close.svg" alt="" class="w-4 h-4 invert" />
+           </button>
+         {/if}
       </div>
+
+      <!-- Video Upload Shimmer (while uploading, before video appears) -->
+      {#if uploadingVideo}
+        <div class="my-4 w-full aspect-video rounded-lg bg-gradient-to-r from-[#d0d0d0] via-[#e8e8e8] to-[#d0d0d0] bg-[length:200%_100%] animate-shimmer"></div>
+      {/if}
 
       <!-- Word Count -->
       {#if wordCount > 0}
@@ -916,14 +981,6 @@
       </footer>
     </div>
 
-    <!-- Hidden file input for featured image -->
-    <input
-      bind:this={fileInput}
-      type="file"
-      accept="image/*"
-      class="hidden"
-      on:change={handleImageUpload}
-    />
   </div>
 
   <!-- Preview Drawer -->
@@ -931,8 +988,6 @@
     <PreviewDrawer
       {title}
       summary=""
-      {featuredImageUrl}
-      {featuredImageCaption}
       contentHtml={getEditorHtml()}
     />
   {/if}
@@ -952,6 +1007,43 @@
 {/if}
 
 <style>
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+:global(.animate-shimmer) {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #e0e0e0 50%,
+    #f0f0f0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+:global(.animate-shimmer video) {
+  opacity: 0 !important;
+}
+
+:global(.animate-fade-in) {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
   .title-input {
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -964,7 +1056,9 @@
 
   /* Quill editor styling — Snow theme with toolbar disabled, all chrome hidden */
   .editor-content {
-    height: 100%;
+    display: block;
+    width: 100%;
+    min-height: calc(100vh - 320px);
     border: none !important;
     outline: none !important;
     box-shadow: none !important;

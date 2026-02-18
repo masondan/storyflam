@@ -83,16 +83,15 @@
       return getThumbnailUrl(story.featured_image_url)
     }
     
-    // Extract first image from HTML content
+    // Extract first <img> tag from HTML content (ignore video src attributes)
     if (story.content && 'html' in story.content) {
-      const match = story.content.html.match(/src="([^"]+)"/)
-      if (match) return getThumbnailUrl(match[1])
+      const imgMatch = story.content.html.match(/<img[^>]+src="([^"]+)"/)
+      if (imgMatch) return getThumbnailUrl(imgMatch[1])
     }
     
     const blocks = getBlocks()
     for (const block of blocks) {
       if (block.type === 'image' && block.url) return getThumbnailUrl(block.url)
-      if (block.type === 'youtube' && block.thumbnailUrl) return block.thumbnailUrl
     }
     
     return fallbackImageUrl || '/logos/logo-storyflam-gen.svg'

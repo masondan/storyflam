@@ -26,12 +26,39 @@ export async function initPlyrInContainer(container: HTMLElement): Promise<() =>
 	videos.forEach((video) => {
 		// Skip if already initialized
 		if (video.closest('.plyr--video')) return
+		
+		// Skip placeholder videos (those still loading)
+		const wrapper = video.closest('[data-video-url]')
+		if (wrapper && wrapper.getAttribute('data-video-url')?.startsWith('video-placeholder-')) return
 
 		try {
 			const player = new Plyr(video, {
 				controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
 			})
 			instances.push(player)
+			
+			// Hide Plyr controls until video is ready to play
+			const plyrWrapper = video.closest('.plyr')
+			if (plyrWrapper) {
+				plyrWrapper.style.opacity = '0'
+				plyrWrapper.style.pointerEvents = 'none'
+			}
+			
+			// Wait for video to be loadable, then show Plyr with fade-in
+			const onCanPlay = () => {
+				video.style.pointerEvents = 'auto'
+				video.classList.remove('opacity-0')
+				video.classList.add('animate-fade-in')
+				if (plyrWrapper) {
+					plyrWrapper.style.opacity = '1'
+					plyrWrapper.style.pointerEvents = 'auto'
+				}
+				video.removeEventListener('canplay', onCanPlay)
+			}
+			
+			video.addEventListener('canplay', onCanPlay)
+			// Also handle the case where video source fails to load
+			video.addEventListener('error', onCanPlay, { once: true })
 		} catch (err) {
 			console.error('[Plyr] Failed to initialize:', err)
 		}
