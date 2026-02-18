@@ -1,9 +1,10 @@
 <script lang="ts">
   import { storyReaderDrawerOpen, currentViewingStory, session } from '$lib/stores'
   import { fly } from 'svelte/transition'
-  import { onMount } from 'svelte'
+  import { tick, onDestroy } from 'svelte'
   import { getOptimizedUrl } from '$lib/cloudinary'
   import { renderContent } from '$lib/content'
+  import { initPlyrInContainer } from '$lib/plyr-init'
 
   export let teamName = 'StoryFlam Publication'
   export let teamLogoUrl: string | null = null
@@ -12,6 +13,8 @@
 
   let scrollY = 0
   let headerOpacity = 1
+  let contentContainer: HTMLElement
+  let cleanupPlyr: (() => void) | null = null
 
   $: displayTeamName = teamName || $session?.publicationName || 'StoryFlam Publication'
   $: storyData = $currentViewingStory?.story
@@ -19,6 +22,18 @@
   $: title = storyData?.title || ''
   $: featuredImageUrl = storyData?.featured_image_url
   $: storyContent = storyData?.content || null
+
+  // Re-initialize Plyr whenever the drawer opens with story data
+  $: if ($storyReaderDrawerOpen && storyData) {
+    initStoryPlyr()
+  }
+
+  async function initStoryPlyr() {
+    if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
+    await tick()
+    if (!contentContainer) return
+    cleanupPlyr = await initPlyrInContainer(contentContainer)
+  }
 
   function closeDrawer() {
     storyReaderDrawerOpen.set(false)
@@ -28,31 +43,12 @@
   function handleScroll(e: Event) {
     const main = e.target as HTMLElement
     scrollY = main.scrollTop
-    // Reduce opacity as user scrolls down, min opacity at 100px
     headerOpacity = Math.max(0.3, 1 - scrollY / 100)
   }
 
-  onMount(async () => {
-    // Dynamically import Plyr only on client
-    const PlyrModule = await import('plyr')
-    const Plyr = PlyrModule.default
-
-    // Initialize Plyr for any videos in the story content
-    // Use a small delay to ensure DOM is fully rendered
-    setTimeout(() => {
-      const videos = document.querySelectorAll('.story-content video')
-      videos.forEach(video => {
-        // Skip if already initialized by Plyr
-        if (video.parentElement?.classList.contains('plyr')) return
-        
-        new Plyr(video as HTMLVideoElement, {
-          controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'fullscreen'],
-          quality: { default: 720, options: [720] }
-        })
-      })
-    }, 100)
+  onDestroy(() => {
+    if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
   })
-
 </script>
 
 {#if $storyReaderDrawerOpen}
@@ -106,7 +102,7 @@
           {/if}
           
           <!-- Content Blocks -->
-          <div class="story-content">
+          <div class="story-content" bind:this={contentContainer}>
             {@html renderContent(storyContent, primaryColor)}
           </div>
         </article>
@@ -157,7 +153,6 @@
   .story-content :global(video) {
     width: 100%;
     border-radius: 0.5rem;
-    margin: 1rem 0;
   }
 
   .story-content :global(.ql-video-wrapper) {
@@ -173,9 +168,17 @@
 
   .story-content :global(.plyr) {
     --plyr-color-main: #5422b0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: transparent;
   }
 
   .story-content :global(.plyr__video-wrapper) {
     background: transparent;
+  }
+
+  .story-content :global(video) {
+    max-width: 100%;
+    border-radius: 0.5rem;
   }
 </style>

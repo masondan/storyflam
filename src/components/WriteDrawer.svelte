@@ -13,6 +13,7 @@
   import { createStory, updateStory, publishStory, acquireLock, releaseLock, refreshLock } from '$lib/stories'
   import { logActivity } from '$lib/activity'
   import { renderContent } from '$lib/content'
+  import { initPlyrInContainer, stripPlyrMarkup } from '$lib/plyr-init'
   import PreviewDrawer from './PreviewDrawer.svelte'
   import LockWarning from './LockWarning.svelte'
   import LinkModal from './LinkModal.svelte'
@@ -56,6 +57,9 @@
   // Media delete overlay state
   let deleteOverlay: { type: 'image' | 'video', element: HTMLElement } | null = null
 
+  // Plyr cleanup for editor videos
+  let cleanupPlyr: (() => void) | null = null
+
   $: canPublish = title.trim().length > 0 && !!$session?.publicationName
   $: isEditingExisting = !!$editingStory.id
   $: isPublishedStory = $editingStory.status === 'published'
@@ -97,6 +101,9 @@
     showPublishToolbar = false
     saving = false
     
+    // Clean up any existing Plyr instances
+    if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
+    
     // Initialize Quill after DOM update
     await tick()
     await initQuill()
@@ -117,7 +124,16 @@
       } else {
         quillInstance.setText('')
       }
+      // Initialize Plyr on any videos in loaded content
+      await initEditorPlyr()
     }
+  }
+
+  async function initEditorPlyr() {
+    if (!editorContainer) return
+    if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
+    await tick()
+    cleanupPlyr = await initPlyrInContainer(editorContainer)
   }
 
   async function initQuill() {
@@ -150,16 +166,8 @@
         
         node.appendChild(video)
         node.dataset.videoUrl = value
-        
-        // Initialize Plyr player (when available)
-        setTimeout(() => {
-          if ((window as any).PlyrConstructor) {
-            new (window as any).PlyrConstructor(video, {
-              controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'fullscreen'],
-              quality: { default: 720, options: [720] }
-            })
-          }
-        }, 0)
+        // Don't initialize Plyr here - store raw video HTML only
+        // Plyr will be initialized in the views (PreviewDrawer, StoryReaderDrawer)
         
         return node
       }
@@ -231,11 +239,6 @@
   }
 
   onMount(async () => {
-    // Dynamically import Plyr only on client
-    const PlyrModule = await import('plyr')
-    const Plyr = PlyrModule.default
-    window.PlyrConstructor = Plyr
-
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleViewportResize)
       window.visualViewport.addEventListener('scroll', handleViewportResize)
@@ -245,6 +248,7 @@
   onDestroy(() => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
     clearLockRefreshTimer()
+    if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
     
     if (window.visualViewport) {
       window.visualViewport.removeEventListener('resize', handleViewportResize)
@@ -261,7 +265,8 @@
     const html = quillInstance.root.innerHTML
     // Quill uses <p><br></p> for empty — treat as empty
     if (html === '<p><br></p>' || html === '<p></p>') return ''
-    return html
+    // Strip any Plyr DOM wrappers so only clean video HTML is saved
+    return stripPlyrMarkup(html)
   }
 
   function getWordCount(): number {
@@ -405,6 +410,8 @@
         quillInstance.insertText(range.index + 1, '\n')
         quillInstance.setSelection(range.index + 2)
         scheduleAutoSave()
+        // Initialize Plyr on the newly inserted video
+        await initEditorPlyr()
       }
     } catch {
       showNotification('error', 'Failed to upload video')
@@ -1042,12 +1049,22 @@
 
   .editor-content :global(.ql-editor .ql-video-wrapper) {
     margin: 1rem 0;
-    cursor: pointer;
   }
 
   .editor-content :global(.ql-editor video) {
     width: 100%;
     border-radius: 0.5rem;
+  }
+
+  .editor-content :global(.plyr) {
+    --plyr-color-main: #5422b0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .editor-content :global(.plyr__video-wrapper) {
+    background: transparent;
   }
 
   .editor-content :global(.ql-editor a) {
@@ -1063,10 +1080,5 @@
 
   .editor-content :global(*)::selection {
     background-color: var(--selection-color) !important;
-  }
-
-  /* Plyr customization */
-  .editor-content :global(.plyr) {
-    --plyr-color-main: #5422b0;
   }
 </style>
