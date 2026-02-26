@@ -58,6 +58,11 @@
   // Plyr cleanup for editor videos
   let cleanupPlyr: (() => void) | null = null
 
+  // Toolbar active state tracking
+  let isBoldActive = false
+  let isHeadingActive = false
+  let isLinkActive = false
+
   $: canPublish = title.trim().length > 0 && !!$session?.publicationName
   $: isEditingExisting = !!$editingStory.id
   $: isPublishedStory = $editingStory.status === 'published'
@@ -201,6 +206,11 @@
     // Listen for text changes to trigger auto-save
     quillInstance.on('text-change', () => {
       scheduleAutoSave()
+    })
+
+    // Listen for selection changes to update toolbar active states
+    quillInstance.on('selection-change', (range: any) => {
+      updateToolbarActiveStates()
     })
   }
 
@@ -572,16 +582,32 @@
        }
 
   // Bottom toolbar formatting functions
+  function updateToolbarActiveStates() {
+    if (!quillInstance) {
+      isBoldActive = false
+      isHeadingActive = false
+      isLinkActive = false
+      return
+    }
+    
+    const format = quillInstance.getFormat()
+    isBoldActive = !!format.bold
+    isHeadingActive = format.header === 2
+    isLinkActive = !!format.link
+  }
+
   function toggleBold() {
     if (!quillInstance) return
     const format = quillInstance.getFormat()
     quillInstance.format('bold', !format.bold)
+    updateToolbarActiveStates()
   }
 
   function toggleHeading() {
     if (!quillInstance) return
     const format = quillInstance.getFormat()
     quillInstance.format('header', format.header === 2 ? false : 2)
+    updateToolbarActiveStates()
   }
 
   function openLinkModal() {
@@ -607,6 +633,7 @@
     quillInstance.insertText(range.index, text, 'link', url)
     quillInstance.setSelection(range.index + text.length)
     showLinkModal = false
+    updateToolbarActiveStates()
     scheduleAutoSave()
   }
 
@@ -923,48 +950,66 @@
       <footer class="border-t border-[#efefef] px-4 py-3 bg-white">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <button on:click={toggleBold} class="p-2" aria-label="Bold text">
+          <button 
+            on:click={toggleBold} 
+            class="p-2.5 rounded-lg transition-all"
+            class:bg-purple-100={isBoldActive}
+            aria-label="Bold text"
+          >
             <img
               src="/icons/icon-bold.svg"
               alt=""
-              class="w-5 h-5"
-              style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+              class="w-6 h-6 font-bold"
+              class:font-bold={isBoldActive}
+              style="filter: {isBoldActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'} font-weight: {isBoldActive ? '700' : '400'};"
             />
           </button>
-          <button on:click={toggleHeading} class="p-2" aria-label="Add subhead">
+          <button 
+            on:click={toggleHeading} 
+            class="p-2.5 rounded-lg transition-all"
+            class:bg-purple-100={isHeadingActive}
+            aria-label="Add subhead"
+          >
             <img
               src="/icons/icon-heading.svg"
               alt=""
-              class="w-5 h-5"
-              style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+              class="w-6 h-6 font-bold"
+              class:font-bold={isHeadingActive}
+              style="filter: {isHeadingActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'} font-weight: {isHeadingActive ? '700' : '400'};"
             />
           </button>
-          <button on:click={openLinkModal} class="p-2" aria-label="Add link">
+          <button 
+            on:click={openLinkModal} 
+            class="p-2.5 rounded-lg transition-all"
+            class:bg-purple-100={isLinkActive}
+            aria-label="Add link"
+          >
             <img
               src="/icons/icon-link.svg"
               alt=""
-              class="w-5 h-5"
-              style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+              class="w-6 h-6 font-bold"
+              class:font-bold={isLinkActive}
+              style="filter: {isLinkActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'} font-weight: {isLinkActive ? '700' : '400'};"
             />
           </button>
-          <button on:click={insertSeparator} class="p-2" aria-label="Add separator">
+          <button on:click={insertSeparator} class="p-2.5" aria-label="Add separator">
             <img
               src="/icons/icon-separator.svg"
               alt=""
-              class="w-5 h-5"
+              class="w-6 h-6"
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
             />
           </button>
           <button 
             on:click={() => videoFileInput.click()} 
-            class="p-2" 
+            class="p-2.5" 
             aria-label="Add video"
             disabled={uploadingVideo}
           >
             <img
               src="/icons/icon-video.svg"
               alt=""
-              class="w-5 h-5"
+              class="w-6 h-6"
               class:animate-pulse={uploadingVideo}
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
             />
@@ -976,11 +1021,11 @@
             class="hidden"
             on:change={handleVideoUpload}
           />
-          <button on:click={() => imageFileInput.click()} class="p-2" aria-label="Add image" disabled={uploadingImage}>
+          <button on:click={() => imageFileInput.click()} class="p-2.5" aria-label="Add image" disabled={uploadingImage}>
             <img
               src="/icons/icon-image.svg"
               alt=""
-              class="w-5 h-5"
+              class="w-6 h-6"
               class:animate-pulse={uploadingImage}
               style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
             />
@@ -997,37 +1042,37 @@
         <div class="w-px h-6 bg-[#999999]"></div>
 
         <div class="flex items-center gap-3">
-          <button on:click={openPreview} class="p-2" aria-label="Preview">
+          <button on:click={openPreview} class="p-2.5" aria-label="Preview">
             <img
               src="/icons/icon-preview.svg"
               alt=""
-              class="w-5 h-5"
+              class="w-6 h-6"
               style="filter: {hexToFilter($teamColors.primary)};"
             />
           </button>
           {#if isPublishedStory}
             <button
               on:click={toggleSaveToolbar}
-              class="p-2 outline-none focus:outline-none"
+              class="p-2.5 outline-none focus:outline-none"
               aria-label="Save Changes"
             >
               <img
                 src={showSaveToolbar ? '/icons/icon-publish-fill.svg' : '/icons/icon-publish.svg'}
                 alt=""
-                class="w-5 h-5"
+                class="w-6 h-6"
                 style="filter: {hexToFilter($teamColors.primary)};"
               />
             </button>
           {:else}
             <button
               on:click={togglePublishToolbar}
-              class="p-2 outline-none focus:outline-none"
+              class="p-2.5 outline-none focus:outline-none"
               aria-label="Publish"
             >
               <img
                 src={showPublishToolbar ? '/icons/icon-publish-fill.svg' : '/icons/icon-publish.svg'}
                 alt=""
-                class="w-5 h-5"
+                class="w-6 h-6"
                 style="filter: {hexToFilter($teamColors.primary)};"
               />
             </button>
