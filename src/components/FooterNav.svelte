@@ -23,83 +23,77 @@
 </script>
 
 <footer class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full bg-white z-40 md:shadow-2xl md:rounded-t-lg">
-  <nav class="flex items-center h-[50px] px-3">
-    <!-- Left spacer for centering -->
-    <div class="flex-1"></div>
+  <nav class="flex items-center h-[50px] px-3 justify-center gap-6">
+    <!-- Invisible spacer (matches right side width: 2 icons + gap) -->
+    <div class="w-[50px]"></div>
 
-    <!-- Icon group (centered) -->
-    <div class="flex items-center gap-3">
-      <!-- My Stories -->
-      <a
-        href="/{courseId}/home"
-        class="flex items-center justify-center"
-        aria-label="My Stories"
-      >
-        {#if isHomePage}
-          <div class="w-7 h-7" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-stories-fill.svg'); mask-image: url('/icons/icon-stories-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
-        {:else}
-          <img
-            src="/icons/icon-stories.svg"
-            alt=""
-            class="w-7 h-7"
-            style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-          />
-        {/if}
-      </a>
-
-      <!-- Write Button -->
-      <button
-        on:click={openWriteDrawer}
-        class="flex items-center justify-center rounded-full w-14 h-14 -mt-5"
-        style="background-color: #{$teamColors.primary};"
-        aria-label="Write new story"
-      >
+    <!-- My Stories -->
+    <a
+      href="/{courseId}/home"
+      class="flex items-center justify-center"
+      aria-label="My Stories"
+    >
+      {#if isHomePage}
+        <div class="w-8 h-8" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-stories-fill.svg'); mask-image: url('/icons/icon-stories-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+      {:else}
         <img
-          src="/icons/icon-storyflam-quill.svg"
+          src="/icons/icon-stories.svg"
           alt=""
-          class="w-10 h-10"
-          style="filter: invert(100%) brightness(1.2);"
+          class="w-8 h-8"
+          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
         />
-      </button>
+      {/if}
+    </a>
 
-      <!-- Publication -->
-      <a
-        href="/{courseId}/stream"
-        class="flex items-center justify-center"
-        aria-label="My Publication"
-      >
-        {#if isStreamPage}
-          <div class="w-7 h-7" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-publication-fill.svg'); mask-image: url('/icons/icon-publication-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
-        {:else}
-          <img
-            src="/icons/icon-publication.svg"
-            alt=""
-            class="w-7 h-7"
-            style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-          />
-        {/if}
-      </a>
+    <!-- Write Button -->
+    <button
+      on:click={openWriteDrawer}
+      class="flex items-center justify-center rounded-full w-14 h-14 -mt-5"
+      style="background-color: #{$teamColors.primary};"
+      aria-label="Write new story"
+    >
+      <img
+        src="/icons/icon-storyflam-quill.svg"
+        alt=""
+        class="w-10 h-10"
+        style="filter: invert(100%) brightness(1.2);"
+      />
+    </button>
 
-      <!-- Settings -->
-      <a
-        href="/{courseId}/settings"
-        class="flex items-center justify-center"
-        aria-label="My Profile"
-      >
-        {#if isSettingsPage}
-          <div class="w-7 h-7" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-profile-fill.svg'); mask-image: url('/icons/icon-profile-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
-        {:else}
-          <img
-            src="/icons/icon-profile.svg"
-            alt=""
-            class="w-7 h-7"
-            style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-          />
-        {/if}
-      </a>
-    </div>
+    <!-- Publication -->
+    <a
+      href="/{courseId}/stream"
+      class="flex items-center justify-center"
+      aria-label="My Publication"
+    >
+      {#if isStreamPage}
+        <div class="w-8 h-8" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-publication-fill.svg'); mask-image: url('/icons/icon-publication-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+      {:else}
+        <img
+          src="/icons/icon-publication.svg"
+          alt=""
+          class="w-8 h-8"
+          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+        />
+      {/if}
+    </a>
 
-    <!-- Right spacer for centering -->
-    <div class="flex-1"></div>
+    <!-- Settings -->
+    <a
+      href="/{courseId}/settings"
+      class="flex items-center justify-center"
+      aria-label="My Profile"
+    >
+      {#if isSettingsPage}
+        <div class="w-8 h-8" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-profile-fill.svg'); mask-image: url('/icons/icon-profile-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+      {:else}
+        <img
+          src="/icons/icon-profile.svg"
+          alt=""
+          class="w-8 h-8"
+          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+        />
+      {/if}
+    </a>
   </nav>
 </footer>
