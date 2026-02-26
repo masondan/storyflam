@@ -1,16 +1,18 @@
-# NewsLab v1.0
+# StoryFlam v1.0
 
-**Purpose:** Complete technical reference for AI agents implementing NewsLab.  
+**Purpose:** Complete technical reference for AI agents implementing StoryFlam.  
 **Audience:** Code leads, developers, AI agents  
-**Status:** Ready for implementation  
-**Last Updated:** January 2026
+**Status:** Deployed & actively refined  
+**Last Updated:** February 2026
 
 ---
 
 ## Quick Start for AI Agents
 
 ## About the app
-- NewsLab is a simple, non-commercial mobile-first CMS for use by journalists during training courses. It aims to encourage collaboration, teamwork and creativity. It is live on CloudFlare Pages at: thenewslab.pages.dev, via GitHub.
+- **StoryFlam** is a simple, non-commercial mobile-first CMS for use by journalists during training courses. It aims to encourage collaboration, teamwork, and creativity. It is live on CloudFlare Pages at: **storyflam.pages.dev**, via GitHub.
+- Built with **SvelteKit**, **Supabase**, **Quill** (rich text editor), and **Cloudinary** (media hosting).
+- Deployed in training environments across Africa and beyond; actively refined based on user feedback.
 
 ### Core Workflows (Fast Reference)
 
@@ -61,12 +63,24 @@
 | Story CRUD | `src/lib/stories.ts` |
 | Database setup | `src/lib/supabase.ts` |
 | Types | `src/lib/types.ts` |
+| Content rendering | `src/lib/content.ts` (supports Quill HTML + legacy blocks) |
+| Cloudinary integration | `src/lib/cloudinary.ts` |
 | Login page | `src/routes/+page.svelte` |
 | Home (drafts/published) | `src/routes/[courseId]/home/+page.svelte` |
-| Team stream | `src/routes/[courseId]/stream/+page.svelte` |
+| Publication stream | `src/routes/[courseId]/stream/+page.svelte` |
 | Settings | `src/routes/[courseId]/settings/+page.svelte` |
-| Public share | `src/routes/share/[teamName]/+page.svelte` |
-| Main editor | `src/components/WriteDrawer.svelte` (1478 lines) |
+| Public share | `src/routes/share/[teamName]/+page.svelte` (note: route param should be `[publicationName]`) |
+| Main editor | `src/components/WriteDrawer.svelte` (Quill-based, ~1300 lines) |
+| Publication view | `src/components/TeamStreamDrawer.svelte` (note: should be `PublicationStreamDrawer.svelte`) |
+
+### Tech Stack
+- **Frontend:** SvelteKit 2.0, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL)
+- **Rich Text Editor:** Quill 2.0.3 (HTML-based)
+- **Media Hosting:** Cloudinary (images & videos)
+- **Video Player:** Plyr 3.8.4
+- **PDF Export:** jsPDF 3.0.4
+- **Runtime:** Node.js, deployed on Cloudflare Pages
 
 ### Common Patterns for AI Agents
 
@@ -139,7 +153,7 @@ window.visualViewport?.addEventListener('resize', handleViewportResize)
 5. [Lock Management](#lock-management)
 6. [Activity Logging](#activity-logging)
 7. [Realtime Subscriptions](#realtime-subscriptions)
-8. [Rich Text Content](#rich-text-content)
+8. [Rich Text Content & Quill Editor](#rich-text-content--quill-editor)
 9. [State Management](#state-management)
 10. [Component Architecture](#component-architecture)
 11. [Component Dependency Graph](#component-dependency-graph)
@@ -193,27 +207,27 @@ CREATE INDEX idx_journalists_course ON journalists(course_id);
 
 **Constraints:** `name` (max 30, unique per course), `team_name` (can be NULL), `is_editor` (boolean flag)
 
-### teams
+### publications
 ```sql
-CREATE TABLE teams (
+CREATE TABLE publications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id TEXT NOT NULL,
-  team_name TEXT NOT NULL,                          -- Unique per course
+  publication_name TEXT NOT NULL,                   -- Unique per course
   primary_color TEXT DEFAULT '5422b0',              -- Hex color (dark theme)
   secondary_color TEXT DEFAULT 'f0e6f7',            -- Hex color (light contrast)
   logo_url TEXT,                                    -- Cloudinary URL, square image
   public_share_token TEXT UNIQUE,                   -- UUID for public read-only URL
   share_enabled BOOLEAN DEFAULT FALSE,              -- Toggle public sharing on/off
-  team_lock BOOLEAN,                                -- Optional lock flag for team settings
+  team_lock BOOLEAN,                                -- Optional lock flag for publication settings
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(course_id, team_name),
+  UNIQUE(course_id, publication_name),
   FOREIGN KEY(course_id) REFERENCES newslabs(course_id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX idx_teams_course_name ON teams(course_id, team_name);
-CREATE INDEX idx_teams_course ON teams(course_id);
-CREATE UNIQUE INDEX idx_teams_share_token ON teams(public_share_token) WHERE public_share_token IS NOT NULL;
+CREATE UNIQUE INDEX idx_publications_course_name ON publications(course_id, publication_name);
+CREATE INDEX idx_publications_course ON publications(course_id);
+CREATE UNIQUE INDEX idx_publications_share_token ON publications(public_share_token) WHERE public_share_token IS NOT NULL;
 ```
 
 **Color Palettes (7 options - select one per team):**
@@ -234,14 +248,14 @@ export const COLOR_PALETTES = [
 CREATE TABLE stories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id TEXT NOT NULL,
-  team_name TEXT NOT NULL,                          -- Team where story appears
+  publication_name TEXT NOT NULL,                   -- Publication where story appears
   author_name TEXT NOT NULL,                        -- Creator's name
   title TEXT NOT NULL,                              -- Headline (required)
   summary TEXT,                                     -- Optional summary
   featured_image_url TEXT,                          -- Cloudinary URL
-  content JSONB,                                    -- Rich text blocks
+  content JSONB,                                    -- Rich text (Quill HTML or legacy blocks)
   status TEXT DEFAULT 'draft',                      -- 'draft' or 'published'
-  is_pinned BOOLEAN DEFAULT FALSE,                  -- Pinned in team stream
+  is_pinned BOOLEAN DEFAULT FALSE,                  -- Pinned in publication stream
   pin_index INTEGER,                                -- Order for pinned stories (0=newest, 2=oldest)
   pin_timestamp TIMESTAMP,                          -- When pinned (for ordering)
   locked_by TEXT,                                   -- Current editor's name (NULL if unlocked)
@@ -252,12 +266,12 @@ CREATE TABLE stories (
 );
 
 CREATE INDEX idx_stories_course_status ON stories(course_id, status);
-CREATE INDEX idx_stories_course_team_status ON stories(course_id, team_name, status);
+CREATE INDEX idx_stories_course_publication_status ON stories(course_id, publication_name, status);
 CREATE INDEX idx_stories_author ON stories(course_id, author_name);
-CREATE INDEX idx_stories_pinned ON stories(course_id, team_name, is_pinned) WHERE is_pinned = true;
+CREATE INDEX idx_stories_publication_pinned ON stories(course_id, publication_name, is_pinned) WHERE is_pinned = true;
 ```
 
-**Constraints:** `title` (required, non-empty), `status` ('draft' or 'published'), `content` (JSONB blocks), Max 3 pinned stories per team (enforced in app logic)
+**Constraints:** `title` (required, non-empty), `status` ('draft' or 'published'), `content` (JSONB with Quill HTML or legacy blocks), Max 3 pinned stories per publication (enforced in app logic)
 
 **Locking Lifecycle:**
 - `locked_by = null` → Story is unlocked, multiple users can view
@@ -270,9 +284,9 @@ CREATE INDEX idx_stories_pinned ON stories(course_id, team_name, is_pinned) WHER
 CREATE TABLE activity_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id TEXT NOT NULL,
-  team_name TEXT,
+  publication_name TEXT,
   journalist_name TEXT,
-  action TEXT,                                      -- 'published', 'unpublished', 'edited', 'pinned', 'unpinned', 'deleted', 'joined_team', 'left_team', 'promoted_editor', 'demoted_editor'
+  action TEXT,                                      -- 'published', 'unpublished', 'edited', 'pinned', 'unpinned', 'deleted', 'joined_publication', 'left_publication', 'promoted_editor', 'demoted_editor'
   story_id UUID,
   story_title TEXT,
   details JSONB,                                    -- Additional context as needed
@@ -281,7 +295,7 @@ CREATE TABLE activity_log (
 );
 
 CREATE INDEX idx_activity_course ON activity_log(course_id);
-CREATE INDEX idx_activity_course_team ON activity_log(course_id, team_name);
+CREATE INDEX idx_activity_course_publication ON activity_log(course_id, publication_name);
 CREATE INDEX idx_activity_created ON activity_log(created_at DESC);
 ```
 
@@ -631,71 +645,103 @@ onDestroy(() => {
 
 ---
 
-## Rich Text Content
+## Rich Text Content & Quill Editor
 
-### Block Structure (JSONB)
+### Overview
+Story content supports two formats:
+1. **Quill HTML format** (new): Direct HTML output from Quill editor
+2. **Legacy block format** (old): Structured JSON blocks for backward compatibility
+
+Content type is detected at render time: `{ html: string }` vs `{ blocks: ContentBlock[] }`
+
+### Quill Editor Implementation
+**Location:** `src/components/WriteDrawer.svelte`
+
+```typescript
+// Initialize Quill
+import Quill from 'quill'
+let quillInstance: any = null
+
+async function initQuill() {
+  if (!quillContainer) return
+  
+  quillInstance = new Quill(quillContainer, {
+    theme: 'snow',  // Snow theme (toolbar visible)
+    modules: {
+      toolbar: [
+        ['bold', 'italic', 'underline'],
+        [{ 'header': 2 }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['image', 'video', 'link']
+      ]
+    },
+    placeholder: 'Tell your story...'
+  })
+}
+
+// Get HTML content for saving
+const content = quillInstance.root.innerHTML
+```
+
+**Toolbar Features:**
+- Bold, italic, underline text formatting
+- Heading (H2)
+- Ordered and unordered lists
+- Image upload (via Cloudinary)
+- Video upload (via Cloudinary)
+- Links
+
+### Content Storage Format (Quill)
+```javascript
+{
+  html: '<p>Paragraph text</p><h2>Heading</h2><p><strong>Bold</strong> text</p><ul><li>List item</li></ul>...'
+}
+```
+
+### Legacy Block Format (Backward Compatibility)
 ```javascript
 {
   blocks: [
-    {
-      type: 'paragraph',
-      text: 'This is a paragraph.'
-    },
-    {
-      type: 'heading',
-      text: 'This is an H2 subheading'
-    },
-    {
-      type: 'bold',
-      text: 'Bold text portion'
-    },
-    {
-      type: 'list',
-      listType: 'ordered' | 'unordered',
-      items: ['First', 'Second', 'Third']
-    },
-    {
-      type: 'separator'
-    },
-    {
-      type: 'image',
-      url: 'https://cloudinary.com/image.jpg',
-      caption: 'Image caption',
-      width: 800,
-      height: 450,
-      aspectRatio: '16:9'
-    },
-    {
-      type: 'youtube',
-      url: 'https://youtube.com/watch?v=xxx',
-      title: 'Video title'
-    },
-    {
-      type: 'vimeo',
-      url: 'https://vimeo.com/xxx',
-      title: 'Video title'
-    },
-    {
-      type: 'link',
-      url: 'https://example.com',
-      text: 'Link text',
-      color: '5422b0'  // Team primary color
-    }
+    { type: 'paragraph', text: 'This is a paragraph.' },
+    { type: 'heading', text: 'This is an H2 subheading' },
+    { type: 'bold', text: 'Bold text portion' },
+    { type: 'list', listType: 'ordered' | 'unordered', items: ['First', 'Second', 'Third'] },
+    { type: 'separator' },
+    { type: 'image', url: 'https://cloudinary.com/image.jpg', caption: 'Image caption', width: 800, height: 450, aspectRatio: '16:9' },
+    { type: 'youtube', url: 'https://youtube.com/watch?v=xxx', title: 'Video title' },
+    { type: 'video', url: 'https://cloudinary.com/video.mp4', title: 'Cloudinary video' },
+    { type: 'link', url: 'https://example.com', text: 'Link text', color: '5422b0' }
   ]
 }
 ```
 
-### Rendering (Published Stories)
-Each block type converts to HTML:
-- `paragraph` → `<p>`
-- `heading` → `<h2>`
-- `bold` → `<strong>`
-- `list` → `<ul>` or `<ol>`
-- `separator` → `<hr>`
-- `image` → `<figure><img /></figure>`
-- `youtube` → `<iframe>` (embed URL)
-- `vimeo` → `<iframe>`
-- `link` → `<a>` with team color
+### Rendering Content
+**Location:** `src/lib/content.ts`
+
+**Function:** `renderContent(content, primaryColor): string`
+- Auto-detects format (HTML vs blocks)
+- Renders Quill HTML directly
+- Converts legacy blocks to HTML
+- Supports responsive images via Cloudinary optimization
+
+**Function:** `contentToPlainText(content): string`
+- Used for text export and previews
+- Strips HTML tags from Quill format
+- Formats legacy blocks as plain text with markdown hints
+
+### Content Block Types
+
+| Type | Rendering | Storage |
+|------|-----------|---------|
+| paragraph | `<p>` | text field |
+| heading | `<h2>` | text field |
+| bold | `<strong>` | text field |
+| list | `<ul>` or `<ol>` | items array |
+| separator | `<hr>` | none |
+| image | `<figure><img />` | url, caption, width, height |
+| youtube | `<iframe>` embed | url, title |
+| video | `<video>` player | url (Cloudinary), title |
+| link | `<a>` with color | url, text, color (publication primary) |
 
 ---
 
@@ -1018,15 +1064,15 @@ Current implementation: Async import ensures jsPDF is loaded only on-demand, kee
 ### Unsigned Upload
 ```javascript
 // Environment variables
-VITE_CLOUDINARY_UPLOAD_PRESET=newslab_unsigned
+VITE_CLOUDINARY_UPLOAD_PRESET=storyflam_unsigned
 VITE_CLOUDINARY_CLOUD_NAME=xxxxx
 
-// Upload function
+// Image upload function
 async function uploadImage(file) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET)
-  formData.append('folder', 'newslab/images')
+  formData.append('folder', 'storyflam/images')
   formData.append('resource_type', 'image')
 
   const response = await fetch(
@@ -1042,9 +1088,30 @@ async function uploadImage(file) {
     publicId: data.public_id
   }
 }
+
+// Video upload function
+async function uploadVideo(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET)
+  formData.append('folder', 'storyflam/videos')
+  formData.append('resource_type', 'video')
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/video/upload`,
+    { method: 'POST', body: formData }
+  )
+
+  const data = await response.json()
+  return {
+    url: data.secure_url,
+    duration: data.duration,
+    publicId: data.public_id
+  }
+}
 ```
 
-### Image Optimization Functions
+### Image & Video Optimization Functions
 ```typescript
 // Get optimized image URL with transformations
 getOptimizedUrl(url: string, width: number = 800): string
@@ -1055,6 +1122,12 @@ getThumbnailUrl(url: string, size: number = 300): string
 // Adds Cloudinary transformation: w_300,h_300,c_fill,q_auto,f_auto
 // Returns 300x300px square, auto quality and format
 ```
+
+### Video Rendering in Editor & Published View
+**WriteDrawer.svelte:** Displays video upload progress and preview  
+**Content Rendering:** `renderContent()` in `src/lib/content.ts` converts video blocks to `<video>` tags with Cloudinary URLs  
+**Published View:** Videos render as full-width responsive `<video>` elements with `controls` and `playsinline` attributes  
+**Player Library:** Plyr 3.8.4 can be used for enhanced video controls (currently uses native HTML5 video)
 
 ---
 

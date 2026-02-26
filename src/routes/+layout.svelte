@@ -22,7 +22,7 @@
 </script>
 
 <svelte:head>
-  <title>NewsLab</title>
+  <title>StoryFlam</title>
 </svelte:head>
 
 <div class="min-h-screen flex items-center justify-center bg-bg-main">

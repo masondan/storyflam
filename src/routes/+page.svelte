@@ -111,7 +111,7 @@
 </script>
 
 <svelte:head>
-  <title>NewsLab - Login</title>
+  <title>StoryFlam - Login</title>
 </svelte:head>
 
 <div class="min-h-screen bg-accent-brand flex flex-col items-center px-6 relative">

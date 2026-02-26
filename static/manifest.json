@@ -1,7 +1,7 @@
 {
-  "name": "NewsLab",
-  "short_name": "NewsLab",
-  "description": "Create. Collaborate. Innovate",
+  "name": "StoryFlam",
+  "short_name": "StoryFlam",
+  "description": "Create, post and share mobile-first stories.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,25 +10,19 @@
   "theme_color": "#5422b0",
   "icons": [
     {
-      "src": "/icons/logo-newslab-round.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/logos/logo-storyflam-gen.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/logo-newslab-round.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/logo-newslab-maskable.png",
+      "src": "/logos/logo-storyflam-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/logo-newslab-maskable.png",
+      "src": "/logos/logo-storyflam-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -36,7 +30,7 @@
   ],
   "screenshots": [
     {
-      "src": "/icons/logo-newslab-round.png",
+      "src": "/logos/logo-storyflam-og.png",
       "sizes": "540x720",
       "type": "image/png",
       "form_factor": "narrow"
@@ -51,7 +45,7 @@
       "url": "/create",
       "icons": [
         {
-          "src": "/icons/logo-newslab-maskable.png",
+          "src": "/logos/logo-storyflam-maskable.png",
           "sizes": "192x192",
           "type": "image/png",
           "purpose": "maskable"
