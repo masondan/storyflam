@@ -261,13 +261,6 @@
         </div>
       {/if}
     </main>
-
-    <!-- Footer -->
-    <footer class="py-3 text-center border-t border-[#efefef]">
-      <p class="text-xs text-[#999999]">
-        Powered by <span class="font-medium" style="color: #{primaryColor};">StoryFlam</span>
-      </p>
-    </footer>
   </div>
 {/if}
 
