@@ -2,8 +2,8 @@
   import { onMount, onDestroy } from 'svelte'
   import { supabase } from '$lib/supabase'
   import type { Publication } from '$lib/types'
-  import TeamExpandable from '$components/TeamExpandable.svelte'
-  import TeamStreamDrawer from '$components/TeamStreamDrawer.svelte'
+  import PublicationExpandable from '$components/PublicationExpandable.svelte'
+  import PublicationStreamDrawer from '$components/PublicationStreamDrawer.svelte'
 
   export let courseId: string
 
@@ -82,7 +82,7 @@
       <span class="text-sm text-[#777777] mb-3 block">Publications</span>
       
       {#each teams as team (team.id)}
-        <TeamExpandable
+        <PublicationExpandable
           {team}
           {courseId}
           expanded={expandedTeamId === team.id}
@@ -95,8 +95,8 @@
   {/if}
 </div>
 
-<!-- Team Stream Preview Drawer -->
-<TeamStreamDrawer
+<!-- Publication Stream Preview Drawer -->
+<PublicationStreamDrawer
   bind:open={previewDrawerOpen}
   {courseId}
   teamNameToView={previewTeamName}

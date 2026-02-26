@@ -8,9 +8,9 @@
   import ConfirmationToolbar from '$components/ConfirmationToolbar.svelte'
   import ColorPalette from '$components/ColorPalette.svelte'
   import TeamMemberItem from '$components/TeamMemberItem.svelte'
-  import TeamLogoUpload from '$components/TeamLogoUpload.svelte'
+  import PublicationLogoUpload from '$components/PublicationLogoUpload.svelte'
   import ShareToggle from '$components/ShareToggle.svelte'
-  import TeamLockToggle from '$components/TeamLockToggle.svelte'
+  import PublicationLockToggle from '$components/PublicationLockToggle.svelte'
   import CombinedAdminTab from '$components/CombinedAdminTab.svelte'
 
   type TabType = 'settings' | 'admin'
@@ -1319,7 +1319,7 @@
               />
 
               <!-- Logo Upload -->
-              <TeamLogoUpload
+              <PublicationLogoUpload
                 logoUrl={team?.logo_url || null}
                 disabled={false}
                 {primaryColor}
@@ -1336,8 +1336,8 @@
                 on:toggle={handleShareToggle}
               />
 
-              <!-- Team Lock Toggle -->
-              <TeamLockToggle
+              <!-- Publication Lock Toggle -->
+              <PublicationLockToggle
                 locked={team?.team_lock || false}
                 disabled={false}
                 {primaryColor}

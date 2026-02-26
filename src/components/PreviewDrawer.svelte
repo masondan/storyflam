@@ -11,8 +11,8 @@
   export let featuredImageUrl: string | null = null
   export let featuredImageCaption = ''
   export let contentHtml: string = ''
-  export let teamName: string | null = null
-  export let teamLogoUrl: string | null = null
+  export let publicationName: string | null = null
+  export let publicationLogoUrl: string | null = null
 
   let scrollY = 0
   let headerOpacity = 1
@@ -20,7 +20,7 @@
   let cleanupPlyr: (() => void) | null = null
   let lastInitHtml = ''
 
-  $: displayTeamName = teamName || $session?.publicationName || 'StoryFlam Publication'
+  $: displayPublicationName = publicationName || $session?.publicationName || 'StoryFlam Publication'
   $: authorName = $session?.name || 'Journalist'
 
   function closeDrawer() {
@@ -72,7 +72,7 @@
       </button>
       
       <h1 class="text-sm font-semibold" style="color: #{$teamColors.primary};">
-        {displayTeamName}
+        {displayPublicationName}
       </h1>
     </header>
 

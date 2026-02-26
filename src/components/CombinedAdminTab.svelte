@@ -1,6 +1,6 @@
 <script lang="ts">
   import { session, isTrainer } from '$lib/stores'
-  import TeamsTab from './TeamsTab.svelte'
+  import PublicationsTab from './PublicationsTab.svelte'
   import AdminTab from './AdminTab.svelte'
 
   export let courseId: string
@@ -13,7 +13,7 @@
 <div class="space-y-6">
   <!-- Publications Section (visible to all) -->
   <div>
-    <TeamsTab {courseId} />
+    <PublicationsTab {courseId} />
   </div>
 
   <!-- Admin Section (trainer only) -->

@@ -16,8 +16,8 @@
   let scrollY = 0
   let headerOpacity = 1
 
-  let teamName = ''
-  let teamLogoUrl: string | null = null
+  let publicationName = ''
+  let publicationLogoUrl: string | null = null
   let primaryColor = '5422b0'
   let secondaryColor = 'f0e6f7'
   let fallbackImageUrl: string | null = null
@@ -33,8 +33,8 @@
     
     const { data: teamInfo } = await getTeamInfo(courseId, teamNameToView)
     if (teamInfo) {
-      teamName = teamInfo.publication_name
-      teamLogoUrl = teamInfo.logo_url
+      publicationName = teamInfo.publication_name
+      publicationLogoUrl = teamInfo.logo_url
       primaryColor = teamInfo.primary_color
       secondaryColor = teamInfo.secondary_color
     }
@@ -99,9 +99,9 @@
       <div 
         class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden"
       >
-        {#if teamLogoUrl}
+        {#if publicationLogoUrl}
           <img
-            src={teamLogoUrl}
+            src={publicationLogoUrl}
             alt="Publication logo"
             class="w-full h-full object-cover"
           />
@@ -117,7 +117,7 @@
         {/if}
       </div>
       <h1 class="text-lg font-semibold text-[#1f1f1f]">
-        {teamName || teamNameToView || 'Publication Name'}
+        {publicationName || teamNameToView || 'Publication Name'}
       </h1>
     </header>
 
@@ -157,8 +157,8 @@
 
   <!-- Story Reader Drawer (nested) -->
   <StoryReaderDrawer
-    {teamName}
-    {teamLogoUrl}
+    publicationName={publicationName}
+    publicationLogoUrl={publicationLogoUrl}
     {primaryColor}
     {secondaryColor}
   />

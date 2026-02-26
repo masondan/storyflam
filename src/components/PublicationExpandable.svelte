@@ -6,9 +6,9 @@
   import type { Publication, Journalist } from '$lib/types'
   import TeamMemberItem from '$components/TeamMemberItem.svelte'
   import ColorPalette from '$components/ColorPalette.svelte'
-  import TeamLogoUpload from '$components/TeamLogoUpload.svelte'
+  import PublicationLogoUpload from '$components/PublicationLogoUpload.svelte'
   import ShareToggle from '$components/ShareToggle.svelte'
-  import TeamLockToggle from '$components/TeamLockToggle.svelte'
+  import PublicationLockToggle from '$components/PublicationLockToggle.svelte'
 
   export let team: Publication
   export let courseId: string
@@ -354,7 +354,7 @@
       />
 
       <!-- Logo Upload -->
-      <TeamLogoUpload
+      <PublicationLogoUpload
         logoUrl={team.logo_url}
         disabled={false}
         {primaryColor}
@@ -371,8 +371,8 @@
         on:toggle={handleShareToggle}
       />
 
-      <!-- Team Lock Toggle -->
-      <TeamLockToggle
+      <!-- Publication Lock Toggle -->
+      <PublicationLockToggle
         locked={team.team_lock || false}
         disabled={false}
         {primaryColor}

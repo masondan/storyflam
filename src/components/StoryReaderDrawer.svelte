@@ -6,8 +6,8 @@
   import { renderContent } from '$lib/content'
   import { initPlyrInContainer } from '$lib/plyr-init'
 
-  export let teamName = 'StoryFlam Publication'
-  export let teamLogoUrl: string | null = null
+  export let publicationName = 'StoryFlam Publication'
+  export let publicationLogoUrl: string | null = null
   export let primaryColor = '5422b0'
   export let secondaryColor = 'f0e6f7'
 
@@ -16,7 +16,7 @@
   let contentContainer: HTMLElement
   let cleanupPlyr: (() => void) | null = null
 
-  $: displayTeamName = teamName || $session?.publicationName || 'StoryFlam Publication'
+  $: displayPublicationName = publicationName || $session?.publicationName || 'StoryFlam Publication'
   $: storyData = $currentViewingStory?.story
   $: authorName = storyData?.author_name || 'Unknown'
   $: title = storyData?.title || ''
@@ -76,7 +76,7 @@
       </button>
       
       <h1 class="text-sm font-semibold" style="color: #{primaryColor};">
-        {displayTeamName}
+        {displayPublicationName}
       </h1>
     </header>
 
