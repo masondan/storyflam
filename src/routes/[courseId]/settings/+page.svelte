@@ -1453,7 +1453,7 @@
               on:click={handleDeleteTeam}
               class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all bg-red-600 hover:bg-red-700"
             >
-              Delete team
+              Delete
             </button>
           </div>
         </div>

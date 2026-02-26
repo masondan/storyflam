@@ -12,6 +12,7 @@
   export let selectMode = false
   export let selected = false
   export let showPin = false
+  export let showByline = true
   export let fallbackImageUrl: string | null = null
 
   const dispatch = createEventDispatcher<{
@@ -205,19 +206,23 @@
       {/if}
 
       <!-- Byline + Pin indicator -->
-      <div class="flex items-center justify-between mt-2">
-        <span class="text-sm text-[#777777]">{story.author_name}</span>
-        {#if showPin && story.is_pinned}
-          <div class="flex items-center gap-1 text-xs text-[#777777]">
-            <img
-              src="/icons/icon-pin-fill.svg"
-              alt=""
-              class="w-3 h-3"
-              style="filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);"
-            />
-          </div>
-        {/if}
-      </div>
+      {#if showByline || (showPin && story.is_pinned)}
+        <div class="flex items-center justify-between mt-2">
+          {#if showByline}
+            <span class="text-sm text-[#777777]">{story.author_name}</span>
+          {/if}
+          {#if showPin && story.is_pinned}
+            <div class="flex items-center gap-1 text-xs text-[#777777]">
+              <img
+                src="/icons/icon-pin-fill.svg"
+                alt=""
+                class="w-3 h-3"
+                style="filter: invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);"
+              />
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
   </div>
 

@@ -357,6 +357,7 @@
             {selectMode}
             selected={selectedIds.has(story.id)}
             showPin={activeTab === 'published'}
+            showByline={false}
             {fallbackImageUrl}
             on:edit={handleEdit}
             on:delete={handleDelete}
