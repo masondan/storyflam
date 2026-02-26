@@ -48,10 +48,16 @@
         <!-- Write Button (center, overlaps top border) -->
         <button
           on:click={openWriteDrawer}
-          class="flex items-center justify-center mx-2 -mt-5"
+          class="flex items-center justify-center mx-2 -mt-5 rounded-full w-14 h-14"
+          style="background-color: #{$teamColors.primary};"
           aria-label="Write new story"
         >
-          <div class="w-14 h-14" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-newstory.svg'); mask-image: url('/icons/icon-newstory.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+          <img
+            src="/icons/icon-storyflam-quill.svg"
+            alt=""
+            class="w-10 h-10"
+            style="filter: invert(100%) brightness(1.2);"
+          />
         </button>
 
         <!-- Publication -->
