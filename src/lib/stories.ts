@@ -397,6 +397,39 @@ export async function refreshLock(storyId: string, userName: string): Promise<{ 
   return { error: null }
 }
 
+/**
+ * Clean up stale locks (older than 10 minutes)
+ * This prevents locks from persisting indefinitely if a client crashes
+ * Can be called manually or via a scheduled job
+ */
+export async function cleanupStaleLocks(): Promise<{ cleaned: number; error: string | null }> {
+  // Calculate cutoff time: 10 minutes ago
+  // Server timeout is 5 minutes; 10 minute cleanup window provides buffer
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase
+    .from('stories')
+    .update({
+      locked_by: null,
+      locked_at: null
+    })
+    .lt('locked_at', tenMinutesAgo)
+    .not('locked_by', 'is', null)
+    .select('id')
+
+  if (error) {
+    console.error('Lock cleanup error:', error)
+    return { cleaned: 0, error: error.message }
+  }
+
+  const count = data?.length || 0
+  if (count > 0) {
+    console.log(`[Lock Cleanup] Removed ${count} stale locks`)
+  }
+
+  return { cleaned: count, error: null }
+}
+
 function mapStory(row: Record<string, unknown>): Story {
   return {
     id: row.id as string,

@@ -540,6 +540,28 @@ onDestroy(() => {
 })
 ```
 
+### Server-Side Lock Cleanup
+**Location:** `src/hooks.server.ts`
+
+```typescript
+// Automatic cleanup runs every 10 minutes
+// Removes locks older than 10 minutes (server timeout is 5 minutes)
+cleanupStaleLocks() → { cleaned: number; error: string | null }
+```
+
+**When to use:**
+- Automatic: Server calls `cleanupStaleLocks()` every 10 minutes on startup
+- Manual: Can be called from admin panel or cron job if needed
+
+**Implementation:**
+- Runs on first server request after startup
+- Updates all stories with `locked_at < NOW() - 10 minutes`
+- Sets `locked_by = null, locked_at = null` on matched records
+- Logs count of cleaned locks
+- Prevents indefinite lock holding if client crashes
+
+**Failsafe:** If a user crashes with a lock, the lock will auto-release after 10 minutes maximum. Client code already handles expired locks gracefully via `isLockExpired()` check.
+
 ---
 
 ## Activity Logging
