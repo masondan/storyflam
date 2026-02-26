@@ -1,7 +1,7 @@
 import { writable, derived } from 'svelte/store'
 import type { Session } from './types'
 
-const STORAGE_KEY = 'newslab_session'
+const STORAGE_KEY = 'storyflam_session'
 
 function createSessionStore() {
   // Initialize from localStorage (browser only)

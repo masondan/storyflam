@@ -13,7 +13,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('upload_preset', UPLOAD_PRESET)
-  formData.append('folder', 'newslab/images')
+  formData.append('folder', 'storyflam/images')
 
   try {
     const response = await fetch(
@@ -53,7 +53,7 @@ export async function uploadVideo(file: File): Promise<UploadResult> {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('upload_preset', UPLOAD_PRESET)
-  formData.append('folder', 'newslab/videos')
+  formData.append('folder', 'storyflam/videos')
 
   try {
     const response = await fetch(
