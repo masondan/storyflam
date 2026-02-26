@@ -11,7 +11,7 @@
     edit: void
     delete: void
     unpublish: void
-    export: { format: 'pdf' | 'txt' }
+    export: { format: 'txt' }
     pin: void
     unpin: void
     close: void
@@ -29,8 +29,7 @@
     }
   }
 
-  function handleExport(format: 'pdf' | 'txt') {
-    console.log('[ThreeDotsMenu] handleExport called with format:', format)
+  function handleExport(format: 'txt') {
     dispatch('export', { format })
     showExportMenu = false
   }
@@ -119,13 +118,6 @@
       transition:fly={{ y: -5, duration: 100 }}
       on:click|stopPropagation
     >
-      <button
-        on:click|stopPropagation={() => handleExport('pdf')}
-        class="block w-full px-6 py-2 text-sm hover:bg-black/5 transition-colors"
-        style="color: #{$teamColors.primary};"
-      >
-        PDF
-      </button>
       <button
         on:click|stopPropagation={() => handleExport('txt')}
         class="block w-full px-6 py-2 text-sm hover:bg-black/5 transition-colors"

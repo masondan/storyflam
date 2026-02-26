@@ -3,7 +3,6 @@
   import { session, editingStory, writeDrawerOpen, teamColors, showNotification, storyReaderDrawerOpen, currentViewingStory } from '$lib/stores'
   import { getDrafts, getPublished, deleteStory, deleteStories, unpublishStory, getStory, getTeamInfo, getFallbackImageUrl } from '$lib/stories'
   import { logActivity } from '$lib/activity'
-  import { exportToTxt, exportToPdf } from '$lib/export'
   import { supabase } from '$lib/supabase'
   import type { Story } from '$lib/types'
   import StoryCard from '$components/StoryCard.svelte'
@@ -206,7 +205,7 @@
     }
   }
 
-  async function handleExport(event: CustomEvent<{ id: string; format: 'pdf' | 'txt' }>) {
+  async function handleExport(event: CustomEvent<{ id: string; format: 'txt' }>) {
     const { id, format } = event.detail
     const { data: story } = await getStory(id)
     
@@ -216,13 +215,12 @@
     }
 
     try {
-      if (format === 'pdf') {
-        await exportToPdf(story)
-      } else {
-        exportToTxt(story)
-      }
+      // Lazy-load export function only when needed
+      const { exportToTxt } = await import('$lib/export')
+      exportToTxt(story)
       showNotification('success', `Exported as ${format.toUpperCase()}`)
-    } catch {
+    } catch (error) {
+      console.error('Export failed:', error)
       showNotification('error', 'Export failed')
     }
   }
