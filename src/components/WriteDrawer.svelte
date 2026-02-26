@@ -9,7 +9,7 @@
     teamColors,
     showNotification
   } from '$lib/stores'
-  import { uploadImage, getOptimizedUrl, uploadVideo, getOptimizedVideoUrl, compressImage, MAX_IMAGE_FILE_SIZE } from '$lib/cloudinary'
+  import { uploadImage, getOptimizedUrl, uploadVideo, getOptimizedVideoUrl, compressImage, MAX_IMAGE_FILE_SIZE, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES } from '$lib/cloudinary'
   import { createStory, updateStory, publishStory, acquireLock, releaseLock, refreshLock } from '$lib/stories'
   import { logActivity } from '$lib/activity'
   import { renderContent } from '$lib/content'
@@ -346,6 +346,13 @@
 
     const file = input.files[0]
 
+    // Check file type
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      showNotification('error', 'Image must be JPG, PNG, or WebP.')
+      input.value = ''
+      return
+    }
+
     // Check file size limit
     if (file.size > MAX_IMAGE_FILE_SIZE) {
       showNotification('error', 'Image is too big. Reduce to max 10MB and try again.')
@@ -389,6 +396,13 @@
     if (!input.files?.length || !quillInstance) return
 
     const file = input.files[0]
+    
+    // Check file type
+    if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+      showNotification('error', 'Video must be MP4 or WebM.')
+      input.value = ''
+      return
+    }
     
     // Check file size (100MB limit on free Cloudinary plan)
     if (file.size > 100 * 1024 * 1024) {

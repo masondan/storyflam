@@ -4,6 +4,9 @@ const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024 // 10MB client limit
 const COMPRESSED_IMAGE_MAX = 5 * 1024 * 1024 // 5MB after compression
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm']
+
 export interface UploadResult {
   url: string
   width: number
@@ -69,7 +72,7 @@ export async function compressImage(file: File): Promise<File> {
   })
 }
 
-export { MAX_IMAGE_FILE_SIZE, COMPRESSED_IMAGE_MAX }
+export { MAX_IMAGE_FILE_SIZE, COMPRESSED_IMAGE_MAX, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES }
 
 export async function uploadImage(file: File): Promise<UploadResult> {
   const formData = new FormData()

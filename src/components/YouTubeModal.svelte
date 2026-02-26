@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte'
-  import { uploadImage, compressImage, MAX_IMAGE_FILE_SIZE } from '$lib/cloudinary'
+  import { uploadImage, compressImage, MAX_IMAGE_FILE_SIZE, ALLOWED_IMAGE_TYPES } from '$lib/cloudinary'
   import { showNotification } from '$lib/stores'
   import { fade } from 'svelte/transition'
 
@@ -31,6 +31,13 @@
     const input = event.target as HTMLInputElement
     if (input.files && input.files[0]) {
       const file = input.files[0]
+
+      // Check file type
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        showNotification('error', 'Image must be JPG, PNG, or WebP.')
+        input.value = ''
+        return
+      }
 
       // Check file size limit
       if (file.size > MAX_IMAGE_FILE_SIZE) {
