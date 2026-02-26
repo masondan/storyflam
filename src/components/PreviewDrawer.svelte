@@ -20,7 +20,7 @@
   let cleanupPlyr: (() => void) | null = null
   let lastInitHtml = ''
 
-  $: displayPublicationName = publicationName || $session?.publicationName || 'StoryFlam Publication'
+  $: displayPublicationName = publicationName || $session?.publicationName || 'Publication Name'
   $: authorName = $session?.name || 'Journalist'
 
   function closeDrawer() {
@@ -54,8 +54,8 @@
 >
     <!-- Slim Header -->
     <header 
-      class="sticky top-0 z-40 px-4 py-3 flex items-center justify-center transition-opacity duration-300"
-      style="background-color: #{$teamColors.secondary}; opacity: {headerOpacity};"
+      class="sticky top-0 z-40 px-4 py-3 flex items-center justify-center transition-opacity duration-300 shadow-sm"
+      style="background-color: #{$teamColors.secondary}cc; opacity: {headerOpacity};"
     >
       <!-- Close button -->
       <button
@@ -79,7 +79,9 @@
     <!-- Content -->
     <main class="flex-1 overflow-y-auto px-4 py-6" on:scroll={handleScroll}>
       <!-- Author -->
-      <p class="text-sm text-[#777777] mb-2">By {authorName}</p>
+      {#if title || summary || featuredImageUrl || contentHtml}
+        <p class="text-sm text-[#777777] mb-2">By {authorName}</p>
+      {/if}
 
       <!-- Title -->
       {#if title}
