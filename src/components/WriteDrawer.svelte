@@ -27,6 +27,7 @@
   let saving = false
   let lastSavedTime: number | null = null
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+  let periodicAutoSaveTimer: ReturnType<typeof setInterval> | null = null
 
   // Quill editor
   let editorContainer: HTMLDivElement
@@ -203,6 +204,23 @@
     })
   }
 
+  function startPeriodicAutoSave() {
+    if (periodicAutoSaveTimer) clearInterval(periodicAutoSaveTimer)
+    periodicAutoSaveTimer = setInterval(async () => {
+      if ($editingStory.isDirty && $editingStory.id) {
+        await saveToDatabase()
+        editingStory.markSaved()
+      }
+    }, 30000) // Every 30 seconds
+  }
+
+  function stopPeriodicAutoSave() {
+    if (periodicAutoSaveTimer) {
+      clearInterval(periodicAutoSaveTimer)
+      periodicAutoSaveTimer = null
+    }
+  }
+
   function startLockRefreshTimer(storyId: string) {
     if (lockRefreshTimer) clearInterval(lockRefreshTimer)
     lockRefreshTimer = setInterval(async () => {
@@ -242,10 +260,14 @@
       window.visualViewport.addEventListener('resize', handleViewportResize)
       window.visualViewport.addEventListener('scroll', handleViewportResize)
     }
+    
+    // Start periodic auto-save
+    startPeriodicAutoSave()
   })
 
   onDestroy(() => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
+    stopPeriodicAutoSave()
     clearLockRefreshTimer()
     if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
     
