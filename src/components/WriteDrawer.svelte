@@ -1033,7 +1033,7 @@
           />
         </div>
 
-        <div class="w-px h-6 bg-[#999999]"></div>
+        <div class="w-px h-6 bg-[#999999] mx-3"></div>
 
         <div class="flex items-center gap-3">
           <button on:click={openPreview} class="p-2" aria-label="Preview">
