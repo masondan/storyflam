@@ -1330,7 +1330,7 @@
               <!-- Share Toggle -->
               <ShareToggle
                 enabled={team?.share_enabled || false}
-                teamName={currentTeamName}
+                publicationName={currentTeamName}
                 disabled={false}
                 {primaryColor}
                 on:toggle={handleShareToggle}

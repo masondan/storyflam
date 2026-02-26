@@ -365,7 +365,7 @@
       <!-- Share Toggle -->
       <ShareToggle
         enabled={team.share_enabled}
-        teamName={team.publication_name}
+        publicationName={team.publication_name}
         disabled={false}
         {primaryColor}
         on:toggle={handleShareToggle}

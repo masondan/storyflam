@@ -3,7 +3,7 @@
   import { showNotification } from '$lib/stores'
 
   export let enabled: boolean = false
-  export let teamName: string = ''
+  export let publicationName: string = ''
   export let disabled: boolean = false
   export let primaryColor: string = '5422b0'
 
@@ -11,8 +11,8 @@
 
   let copied = false
 
-  $: shareUrl = teamName 
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/share/${encodeURIComponent(teamName.toLowerCase().replace(/\s+/g, '-'))}`
+  $: shareUrl = publicationName 
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/share/${encodeURIComponent(publicationName.toLowerCase().replace(/\s+/g, '-'))}`
     : ''
 
   function handleToggle() {
@@ -56,7 +56,7 @@
     </button>
   </div>
 
-  {#if enabled && teamName}
+  {#if enabled && publicationName}
     <div class="flex items-center gap-2 bg-[#efefef] rounded-lg px-3 py-2">
       <span class="flex-1 text-sm text-[#333] truncate">{shareUrl}</span>
       <button

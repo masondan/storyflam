@@ -12,46 +12,46 @@
   let error = ''
   let selectedStory: Story | null = null
 
-  $: teamName = decodeURIComponent($page.params.teamName || '')
+  $: publicationName = decodeURIComponent($page.params.publicationName || '')
   $: primaryColor = team?.primary_color || '5422b0'
   $: secondaryColor = team?.secondary_color || 'f0e6f7'
 
   onMount(async () => {
-    await loadTeamData()
+    await loadPublicationData()
   })
 
-  async function loadTeamData() {
-    if (!teamName) {
-      error = 'Team not found'
+  async function loadPublicationData() {
+    if (!publicationName) {
+      error = 'Publication not found'
       loading = false
       return
     }
 
-    const { data: teamData, error: teamError } = await supabase
-      .from('teams')
+    const { data: publicationData, error: publicationError } = await supabase
+      .from('publications')
       .select('*')
-      .ilike('team_name', teamName.replace(/-/g, ' '))
+      .ilike('publication_name', publicationName.replace(/-/g, ' '))
       .single()
 
-    if (teamError || !teamData) {
-      error = 'Team not found'
+    if (publicationError || !publicationData) {
+      error = 'Publication not found'
       loading = false
       return
     }
 
-    if (!teamData.share_enabled) {
-      error = 'This team stream is not public'
+    if (!publicationData.share_enabled) {
+      error = 'This publication stream is not public'
       loading = false
       return
     }
 
-    team = teamData
+    team = publicationData
 
     const { data: storiesData } = await supabase
       .from('stories')
       .select('*')
-      .eq('course_id', teamData.course_id)
-      .eq('publication_name', teamData.team_name)
+      .eq('course_id', publicationData.course_id)
+      .eq('publication_name', publicationData.publication_name)
       .eq('status', 'published')
       .order('is_pinned', { ascending: false })
       .order('pin_timestamp', { ascending: false, nullsFirst: false })
