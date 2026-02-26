@@ -41,7 +41,7 @@
   let lockRefreshTimer: ReturnType<typeof setInterval> | null = null
 
   const AUTOSAVE_DELAY = 3000
-  const LOCK_REFRESH_INTERVAL = 60 * 1000
+  const LOCK_REFRESH_INTERVAL = 3 * 60 * 1000 // 3 minutes (server timeout is 5 minutes)
 
   // Keyboard detection for toolbar positioning
   let keyboardHeight = 0
