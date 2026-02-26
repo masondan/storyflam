@@ -210,7 +210,15 @@
 
     // Listen for selection changes to update toolbar active states
     quillInstance.on('selection-change', (range: any) => {
-      updateToolbarActiveStates()
+      if (range) {
+        updateToolbarActiveStates()
+      } else {
+        // Quill lost focus — reset states without calling getFormat()
+        // (getFormat() with no args calls getSelection(true) which refocuses Quill)
+        isBoldActive = false
+        isHeadingActive = false
+        isLinkActive = false
+      }
     })
   }
 
