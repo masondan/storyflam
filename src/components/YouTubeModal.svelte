@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte'
-  import { uploadImage } from '$lib/cloudinary'
+  import { uploadImage, compressImage, MAX_IMAGE_FILE_SIZE } from '$lib/cloudinary'
+  import { showNotification } from '$lib/stores'
   import { fade } from 'svelte/transition'
 
   export let open = false
@@ -29,8 +30,17 @@
   function handleFileSelect(event: Event) {
     const input = event.target as HTMLInputElement
     if (input.files && input.files[0]) {
-      thumbnailFile = input.files[0]
-      thumbnailPreviewUrl = URL.createObjectURL(input.files[0])
+      const file = input.files[0]
+
+      // Check file size limit
+      if (file.size > MAX_IMAGE_FILE_SIZE) {
+        showNotification('error', 'Image is too big. Reduce to max 10MB and try again.')
+        input.value = ''
+        return
+      }
+
+      thumbnailFile = file
+      thumbnailPreviewUrl = URL.createObjectURL(file)
     }
   }
 
@@ -51,10 +61,20 @@
     if (thumbnailFile) {
       uploading = true
       try {
-        const result = await uploadImage(thumbnailFile)
+        // Compress image before upload
+        const compressedFile = await compressImage(thumbnailFile)
+        const result = await uploadImage(compressedFile)
+
+        if (result.error) {
+          showNotification('error', 'Upload failed. Please try again.')
+          uploading = false
+          return
+        }
+
         thumbnailUrl = result.url
-      } catch {
-        console.error('Failed to upload thumbnail')
+      } catch (err) {
+        console.error('Failed to upload thumbnail:', err)
+        showNotification('error', 'Upload failed. Please try again.')
       }
       uploading = false
     }

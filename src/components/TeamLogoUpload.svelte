@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte'
+  import { compressImage, MAX_IMAGE_FILE_SIZE } from '$lib/cloudinary'
+  import { showNotification } from '$lib/stores'
 
   export let logoUrl: string | null = null
   export let disabled: boolean = false
@@ -18,6 +20,13 @@
     const file = input.files?.[0]
     if (!file || disabled) return
 
+    // Check file size limit
+    if (file.size > MAX_IMAGE_FILE_SIZE) {
+      showNotification('error', 'Image is too big. Reduce to max 10MB and try again.')
+      input.value = ''
+      return
+    }
+
     const img = new Image()
     const objectUrl = URL.createObjectURL(file)
     
@@ -25,14 +34,18 @@
       URL.revokeObjectURL(objectUrl)
       
       if (img.width !== img.height) {
-        alert('Please upload a square image (same width and height)')
+        showNotification('error', 'Please upload a square image (same width and height)')
+        input.value = ''
         return
       }
 
       uploading = true
       try {
+        // Compress image before upload
+        const compressedFile = await compressImage(file)
+
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('file', compressedFile)
         formData.append('upload_preset', UPLOAD_PRESET)
         formData.append('folder', 'storyflam/logos')
 
@@ -41,21 +54,26 @@
           { method: 'POST', body: formData }
         )
 
-        if (!response.ok) throw new Error('Upload failed')
+        if (!response.ok) {
+          showNotification('error', 'Upload failed. Please try again.')
+          return
+        }
 
         const data = await response.json()
         dispatch('upload', { url: data.secure_url })
       } catch (error) {
         console.error('Logo upload failed:', error)
-        alert('Failed to upload logo. Please try again.')
+        showNotification('error', 'Upload failed. Please try again.')
       } finally {
         uploading = false
+        input.value = ''
       }
     }
 
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl)
-      alert('Failed to load image')
+      showNotification('error', 'Failed to load image')
+      input.value = ''
     }
 
     img.src = objectUrl

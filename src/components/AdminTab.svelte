@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { supabase } from '$lib/supabase'
   import { showNotification, session } from '$lib/stores'
-  import { uploadImage } from '$lib/cloudinary'
+  import { uploadImage, compressImage, MAX_IMAGE_FILE_SIZE } from '$lib/cloudinary'
 
   export let courseId: string
 
@@ -184,12 +184,22 @@
     const file = input.files?.[0]
     if (!file) return
 
+    // Check file size limit
+    if (file.size > MAX_IMAGE_FILE_SIZE) {
+      showNotification('error', 'Image is too big. Reduce to max 10MB and try again.')
+      input.value = ''
+      return
+    }
+
     uploadingFallback = true
 
     try {
-      const result = await uploadImage(file)
+      // Compress image before upload
+      const compressedFile = await compressImage(file)
+      const result = await uploadImage(compressedFile)
+
       if (result.error) {
-        showNotification('error', result.error)
+        showNotification('error', 'Upload failed. Please try again.')
         return
       }
 
@@ -209,7 +219,7 @@
       }
     } catch (err) {
       console.error('Upload error:', err)
-      showNotification('error', 'Upload failed')
+      showNotification('error', 'Upload failed. Please try again.')
     } finally {
       uploadingFallback = false
       input.value = ''

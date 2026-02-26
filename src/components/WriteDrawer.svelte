@@ -9,7 +9,7 @@
     teamColors,
     showNotification
   } from '$lib/stores'
-  import { uploadImage, getOptimizedUrl, uploadVideo, getOptimizedVideoUrl } from '$lib/cloudinary'
+  import { uploadImage, getOptimizedUrl, uploadVideo, getOptimizedVideoUrl, compressImage, MAX_IMAGE_FILE_SIZE } from '$lib/cloudinary'
   import { createStory, updateStory, publishStory, acquireLock, releaseLock, refreshLock } from '$lib/stories'
   import { logActivity } from '$lib/activity'
   import { renderContent } from '$lib/content'
@@ -345,10 +345,28 @@
     if (!input.files?.length || !quillInstance) return
 
     const file = input.files[0]
+
+    // Check file size limit
+    if (file.size > MAX_IMAGE_FILE_SIZE) {
+      showNotification('error', 'Image is too big. Reduce to max 10MB and try again.')
+      input.value = ''
+      return
+    }
+
     uploadingImage = true
-    
+
     try {
-      const result = await uploadImage(file)
+      // Compress image before upload
+      const compressedFile = await compressImage(file)
+      const result = await uploadImage(compressedFile)
+
+      if (result.error) {
+        showNotification('error', 'Upload failed. Please try again.')
+        uploadingImage = false
+        input.value = ''
+        return
+      }
+
       if (result.url) {
         const range = quillInstance.getSelection(true)
         quillInstance.insertEmbed(range.index, 'image', getOptimizedUrl(result.url))
@@ -357,11 +375,13 @@
         quillInstance.setSelection(range.index + 2)
         scheduleAutoSave()
       }
-    } catch {
-      showNotification('error', 'Failed to upload image')
+    } catch (err) {
+      console.error('Image upload error:', err)
+      showNotification('error', 'Upload failed. Please try again.')
+    } finally {
+      uploadingImage = false
+      input.value = ''
     }
-    uploadingImage = false
-    input.value = ''
   }
 
   async function handleVideoUpload(event: Event) {
