@@ -25,7 +25,7 @@
 <footer class="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full bg-white z-40 md:shadow-2xl md:rounded-t-lg">
   <nav class="flex items-center h-[50px] px-3 justify-center gap-6">
     <!-- Invisible spacer (matches right side width: 2 icons + gap) -->
-    <div class="w-[50px]"></div>
+    <div class="w-[30px]"></div>
 
     <!-- My Stories -->
     <a
