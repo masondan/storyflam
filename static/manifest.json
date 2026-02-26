@@ -28,14 +28,6 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/logos/logo-storyflam-og.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "categories": ["productivity"],
   "shortcuts": [
     {
