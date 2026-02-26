@@ -35,6 +35,14 @@
   let createTeamError = ''
   let createTeamSaving = false
 
+  // Rename publication state (editor only)
+  let publicationRenaming = false
+  let publicationRenameInput = ''
+  let publicationRenameValid: boolean | null = null
+  let publicationRenameError = ''
+  let publicationRenameSaving = false
+  let publicationRenameValidating = false
+
   // Join team state (inline toolbar)
   let availableTeams: Publication[] = []
   let joiningTeamId: string | null = null
@@ -46,6 +54,11 @@
   let team: Publication | null = null
   let teamMembers: Journalist[] = []
   let currentUserIsEditor = false
+
+  // Accordion state
+  let allPublicationsOpen = false
+  let membersOpen = false
+  let publicationSettingsOpen = false
 
   // Confirmation & modals
   let confirmationAction: ConfirmationAction = null
@@ -286,6 +299,7 @@
 
   // Create team validation with debounce
   let createTeamDebounceTimer: ReturnType<typeof setTimeout>
+  let publicationRenameDebounceTimer: ReturnType<typeof setTimeout>
 
   function handleCreateTeamInput(event: Event) {
     const input = event.target as HTMLInputElement
@@ -342,6 +356,129 @@
     createTeamEditing = false
     createTeamValid = null
     createTeamError = ''
+  }
+
+  // Publication rename (editor only)
+  function startPublicationRename() {
+    if (!currentUserIsEditor || !currentTeamName) return
+    publicationRenaming = true
+    publicationRenameInput = currentTeamName
+    publicationRenameValid = null
+    publicationRenameError = ''
+  }
+
+  function cancelPublicationRename() {
+    publicationRenaming = false
+    publicationRenameInput = ''
+    publicationRenameValid = null
+    publicationRenameError = ''
+  }
+
+  function handlePublicationRenameInput(event: Event) {
+    const input = event.target as HTMLInputElement
+    publicationRenameInput = input.value
+
+    if (publicationRenameInput === currentTeamName) {
+      publicationRenameValid = null
+      publicationRenameError = ''
+      return
+    }
+
+    if (!publicationRenameInput.trim()) {
+      publicationRenameValid = null
+      publicationRenameError = ''
+      return
+    }
+
+    clearTimeout(publicationRenameDebounceTimer)
+    publicationRenameValidating = true
+    publicationRenameDebounceTimer = setTimeout(validatePublicationRename, 300)
+  }
+
+  async function validatePublicationRename() {
+    if (!publicationRenameInput.trim() || publicationRenameInput === currentTeamName) {
+      publicationRenameValidating = false
+      publicationRenameValid = null
+      publicationRenameError = ''
+      return
+    }
+
+    const { data } = await supabase
+      .from('publications')
+      .select('id')
+      .eq('course_id', courseId)
+      .eq('publication_name', publicationRenameInput.trim())
+
+    publicationRenameValidating = false
+    if (data && data.length > 0) {
+      publicationRenameValid = false
+      publicationRenameError = 'Name taken. Try again'
+    } else {
+      publicationRenameValid = true
+      publicationRenameError = ''
+    }
+  }
+
+  async function savePublicationRename() {
+    if (!publicationRenameValid || publicationRenameSaving || !currentTeamName) return
+    if (publicationRenameInput.trim() === currentTeamName) return
+
+    publicationRenameSaving = true
+    const newName = publicationRenameInput.trim()
+    const oldName = currentTeamName
+
+    try {
+      const { error: pubError } = await supabase
+        .from('publications')
+        .update({ publication_name: newName, updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('publication_name', oldName)
+
+      if (pubError) throw pubError
+
+      const { error: journalistError } = await supabase
+        .from('journalists')
+        .update({ publication_name: newName, updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('publication_name', oldName)
+
+      if (journalistError) console.error('Failed to update journalists:', journalistError)
+
+      const { error: storiesError } = await supabase
+        .from('stories')
+        .update({ publication_name: newName, updated_at: new Date().toISOString() })
+        .eq('course_id', courseId)
+        .eq('publication_name', oldName)
+
+      if (storiesError) console.error('Failed to update stories:', storiesError)
+
+      session.set({
+        ...$session!,
+        publicationName: newName
+      })
+
+      if (team) {
+        team = { ...team, publication_name: newName }
+      }
+
+      publicationRenaming = false
+      publicationRenameInput = ''
+      publicationRenameValid = null
+
+      await loadAvailableTeams()
+      await loadTeamData(newName)
+      showNotification('success', 'Publication renamed')
+    } catch (error) {
+      console.error('Rename publication error:', error)
+      showNotification('error', 'Failed to rename. Try again.')
+    } finally {
+      publicationRenameSaving = false
+    }
+  }
+
+  function autoFocusEnd(node: HTMLInputElement) {
+    node.focus()
+    node.setSelectionRange(node.value.length, node.value.length)
   }
 
   function openCreateTeamConfirmation() {
@@ -1064,86 +1201,155 @@
           {/if}
         </div>
 
-        <!-- Team Name Section -->
+        <!-- My Publication Section -->
         <div>
             <div class="flex items-start gap-2">
-              <!-- Left column: label, input, helper text -->
+              <!-- Left column: label, input -->
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-2">
-                  <label for="create-team-input" class="text-sm text-[#777777]">Create Publication</label>
-                  <span class="text-xs text-[#999999]">{createTeamInput.length} / 30</span>
+                  <label for="publication-input" class="text-sm text-[#777777]">My publication</label>
+                  <span class="text-xs text-[#999999]">
+                    {#if publicationRenaming}
+                      {publicationRenameInput.length} / 30
+                    {:else if currentTeamName}
+                      {currentTeamName.length} / 30
+                    {:else}
+                      {createTeamInput.length} / 30
+                    {/if}
+                  </span>
                 </div>
                 
-                <input
-                  id="create-team-input"
-                  type="text"
-                  value={createTeamInput}
-                  on:input={handleCreateTeamInput}
-                  on:focus={startTeamNameEdit}
-                  maxlength="30"
-                  placeholder=""
-                  class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all"
-                  class:ring-2={createTeamEditing}
-                  style={createTeamEditing ? `ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : ''}
-                />
-                
-                <!-- Helper text -->
-                {#if createTeamEditing}
-                  <p class="text-sm mt-2" style="color: #{createTeamValid === true ? '057373' : (createTeamValid === false ? '996633' : '777777')};">
-                    {#if createTeamValid === false}
-                      Name taken. Try again
-                    {:else if createTeamValid === true}
+                {#if currentTeamName && !publicationRenaming}
+                  <!-- Has publication, not renaming: show name -->
+                  <button
+                    type="button"
+                    on:click={() => { if (currentUserIsEditor) startPublicationRename() }}
+                    class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base text-left text-[#333333] outline-none"
+                    class:cursor-default={!currentUserIsEditor}
+                  >
+                    {currentTeamName}
+                  </button>
+                {:else if publicationRenaming}
+                  <!-- Renaming publication (editor only) -->
+                  <input
+                    id="publication-input"
+                    type="text"
+                    value={publicationRenameInput}
+                    on:input={handlePublicationRenameInput}
+                    use:autoFocusEnd
+                    maxlength="30"
+                    class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all ring-2"
+                    style="--tw-ring-color: #{primaryColor}"
+                  />
+                  
+                  <p class="text-sm mt-2" style="color: #{publicationRenameValid === true ? '057373' : (publicationRenameValid === false ? '996633' : '777777')};">
+                    {#if publicationRenameValid === false}
+                      {publicationRenameError}
+                    {:else if publicationRenameValid === true}
                       Name available
                     {:else}
-                      Choose a team name
+                      Choose a new name
                     {/if}
                   </p>
+                {:else}
+                  <!-- No publication: create mode -->
+                  <input
+                    id="publication-input"
+                    type="text"
+                    value={createTeamInput}
+                    on:input={handleCreateTeamInput}
+                    on:focus={startTeamNameEdit}
+                    maxlength="30"
+                    placeholder="Create a new publication or skip to join a publication"
+                    class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all"
+                    class:ring-2={createTeamEditing}
+                    style={createTeamEditing ? `ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : ''}
+                  />
+                  
+                  {#if createTeamEditing}
+                    <p class="text-sm mt-2" style="color: #{createTeamValid === true ? '057373' : (createTeamValid === false ? '996633' : '777777')};">
+                      {#if createTeamValid === false}
+                        Name taken. Try again
+                      {:else if createTeamValid === true}
+                        Name available
+                      {:else}
+                        Choose a publication name
+                      {/if}
+                    </p>
+                  {/if}
                 {/if}
               </div>
 
-              <!-- Right column: icon (fixed position aligned with input center) -->
+              <!-- Right column: icon -->
               <div class="flex items-center" style="margin-top: 42px; height: 20px;">
-                {#if createTeamValidating}
-                  <div 
-                    class="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
-                    style="border-color: #{primaryColor}; border-top-color: transparent;"
-                  ></div>
-                {:else if createTeamEditing}
-                  {#if createTeamValid === true}
-                    <img
-                      src="/icons/icon-check.svg"
-                      alt="Available"
-                      class="w-5 h-5"
-                      style="filter: {hexToFilter(primaryColor)};"
-                    />
-                  {:else if createTeamValid === false}
-                    <img
-                      src="/icons/icon-close-circle-fill.svg"
-                      alt="Not available"
-                      class="w-5 h-5"
-                      style="filter: {hexToFilter(primaryColor)};"
-                    />
+                {#if currentTeamName && !publicationRenaming}
+                  <img
+                    src="/icons/icon-check.svg"
+                    alt="Current publication"
+                    class="w-5 h-5"
+                    style="filter: {hexToFilter(primaryColor)};"
+                  />
+                {:else if publicationRenaming}
+                  {#if publicationRenameValidating}
+                    <div 
+                      class="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                      style="border-color: #{primaryColor}; border-top-color: transparent;"
+                    ></div>
+                  {:else if publicationRenameValid === true}
+                    <img src="/icons/icon-check.svg" alt="Available" class="w-5 h-5" style="filter: {hexToFilter(primaryColor)};" />
+                  {:else if publicationRenameValid === false}
+                    <img src="/icons/icon-close-circle-fill.svg" alt="Not available" class="w-5 h-5" style="filter: {hexToFilter(primaryColor)};" />
                   {:else}
-                    <img
-                      src="/icons/icon-circle.svg"
-                      alt=""
-                      class="w-5 h-5"
-                      style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-                    />
+                    <img src="/icons/icon-circle.svg" alt="" class="w-5 h-5" style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);" />
                   {/if}
                 {:else}
-                  <img
-                    src="/icons/icon-circle.svg"
-                    alt=""
-                    class="w-5 h-5"
-                    style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-                  />
+                  {#if createTeamValidating}
+                    <div 
+                      class="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                      style="border-color: #{primaryColor}; border-top-color: transparent;"
+                    ></div>
+                  {:else if createTeamEditing}
+                    {#if createTeamValid === true}
+                      <img src="/icons/icon-check.svg" alt="Available" class="w-5 h-5" style="filter: {hexToFilter(primaryColor)};" />
+                    {:else if createTeamValid === false}
+                      <img src="/icons/icon-close-circle-fill.svg" alt="Not available" class="w-5 h-5" style="filter: {hexToFilter(primaryColor)};" />
+                    {:else}
+                      <img src="/icons/icon-circle.svg" alt="" class="w-5 h-5" style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);" />
+                    {/if}
+                  {:else}
+                    <img src="/icons/icon-circle.svg" alt="" class="w-5 h-5" style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);" />
+                  {/if}
                 {/if}
               </div>
             </div>
 
-            <!-- Toolbar row (aligned with input, not full width) -->
-            {#if createTeamEditing}
+            <!-- Toolbar row -->
+            {#if publicationRenaming}
+              <div class="flex justify-end mt-1 mr-7">
+                <div 
+                  class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
+                  style="background-color: #{primaryColor};"
+                >
+                  <button
+                    type="button"
+                    on:click={savePublicationRename}
+                    disabled={publicationRenameValid !== true || publicationRenameInput.trim() === currentTeamName || publicationRenameInput.trim().length === 0 || publicationRenameSaving}
+                    class="transition-opacity"
+                    class:opacity-50={publicationRenameValid !== true || publicationRenameInput.trim() === currentTeamName || publicationRenameInput.trim().length === 0 || publicationRenameSaving}
+                  >
+                    {publicationRenameSaving ? 'Saving...' : 'Change name'}
+                  </button>
+                  <span class="mx-3 opacity-60">|</span>
+                  <button
+                    type="button"
+                    on:click={cancelPublicationRename}
+                    class="transition-opacity hover:opacity-80"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            {:else if createTeamEditing}
               <div class="flex justify-end mt-1 mr-7">
                 <div 
                   class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
@@ -1171,213 +1377,247 @@
             {/if}
           </div>
 
-        <!-- Publications Section -->
+        <!-- All Publications Accordion -->
         <div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-[#777777]">Publications</span>
-              {#if availableTeams.length > 0}
-                <span class="text-sm text-[#777777]">Tap to join</span>
-              {/if}
-            </div>
+            <button
+              type="button"
+              on:click={() => allPublicationsOpen = !allPublicationsOpen}
+              class="w-full flex items-center justify-between"
+            >
+              <span class="text-sm text-[#777777]">All publications</span>
+              <img
+                src="/icons/icon-expand.svg"
+                alt=""
+                class="w-4 h-4 transition-transform"
+                class:rotate-180={allPublicationsOpen}
+                style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+              />
+            </button>
             <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
-            
-            {#if availableTeams.length > 0}
-              <div>
-                {#each availableTeams as availTeam (availTeam.id)}
+
+            {#if allPublicationsOpen}
+              {#if availableTeams.length > 0}
+                <div>
+                  {#each availableTeams as availTeam (availTeam.id)}
+                    <div>
+                      <button
+                        type="button"
+                        on:click={() => availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id && openJoinTeamConfirmation(availTeam)}
+                        class="w-full flex items-center justify-between py-3 text-left transition-colors border-b border-[#e0e0e0]"
+                        class:hover:bg-[#f5f5f5]={availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id}
+                        class:cursor-default={availTeam.publication_name === currentTeamName || joiningTeamId === availTeam.id}
+                      >
+                        <span class="text-base text-[#333333]">{availTeam.publication_name}</span>
+                        {#if availTeam.publication_name === currentTeamName}
+                          <img
+                            src="/icons/icon-check-fill.svg"
+                            alt="Current publication"
+                            class="w-5 h-5"
+                            style="filter: {hexToFilter(primaryColor)};"
+                          />
+                        {:else}
+                          <img
+                            src="/icons/icon-circle.svg"
+                            alt=""
+                            class="w-5 h-5"
+                            style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+                          />
+                        {/if}
+                      </button>
+
+                      <!-- Inline join toolbar -->
+                      {#if joiningTeamId === availTeam.id}
+                        <div class="flex justify-end py-2 border-b border-[#e0e0e0]">
+                          {#if joiningTeamLocked}
+                            <div 
+                              class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
+                              style="background-color: #{primaryColor};"
+                            >
+                              <span class="opacity-70">Team locked</span>
+                              <span class="mx-3 opacity-60">|</span>
+                              <button
+                                type="button"
+                                on:click={cancelJoinTeam}
+                                class="transition-opacity hover:opacity-80"
+                              >
+                                OK
+                              </button>
+                            </div>
+                          {:else}
+                            <div 
+                              class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
+                              style="background-color: #{primaryColor};"
+                            >
+                              <button
+                                type="button"
+                                on:click={confirmJoinTeamInline}
+                                disabled={isJoiningTeam}
+                                class="transition-opacity"
+                                class:opacity-50={isJoiningTeam}
+                              >
+                                {isJoiningTeam ? 'Joining...' : 'Join team'}
+                              </button>
+                              <span class="mx-3 opacity-60">|</span>
+                              <button
+                                type="button"
+                                on:click={cancelJoinTeam}
+                                disabled={isJoiningTeam}
+                                class="transition-opacity hover:opacity-80"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          {/if}
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+                <p class="text-sm text-[#999999] mt-3">You can create or join one publication only.</p>
+              {:else}
+                <p class="text-center text-[#999999] text-sm py-6">All publications appear here</p>
+              {/if}
+            {/if}
+          </div>
+
+        <!-- Members Accordion -->
+        <div>
+            <button
+              type="button"
+              on:click={() => membersOpen = !membersOpen}
+              class="w-full flex items-center justify-between"
+            >
+              <span class="text-sm text-[#777777]">Members</span>
+              <img
+                src="/icons/icon-expand.svg"
+                alt=""
+                class="w-4 h-4 transition-transform"
+                class:rotate-180={membersOpen}
+                style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+              />
+            </button>
+            <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
+
+            {#if membersOpen}
+              {#if teamMembers.length > 0}
+                <div class="flex items-center justify-end mt-2">
+                  <span class="text-sm text-[#777777]">Editor</span>
+                </div>
+                <div>
+                  {#each teamMembers as member (member.id)}
+                    <TeamMemberItem
+                      name={member.name}
+                      isEditor={member.is_editor}
+                      isCurrentUser={member.name === currentUserName}
+                      canRemove={currentUserIsEditor || member.name === currentUserName}
+                      canToggleEditor={currentUserIsEditor}
+                      {primaryColor}
+                      {secondaryColor}
+                      isConfirmingLeave={leavingMemberName === member.name && member.name === currentUserName}
+                      {isLeaving}
+                      isConfirmingEditorToggle={editorToggleMember?.name === member.name}
+                      {isTogglingEditor}
+                      on:remove={() => openLeaveTeamConfirmation(member.name)}
+                      on:startLeave={handleStartLeave}
+                      on:confirmLeave={handleConfirmLeave}
+                      on:cancelLeave={handleCancelLeave}
+                      on:startEditorToggle={handleStartEditorToggle}
+                      on:confirmEditorToggle={handleConfirmEditorToggle}
+                      on:cancelEditorToggle={handleCancelEditorToggle}
+                    />
+                  {/each}
+                </div>
+                <p class="text-sm text-[#999999] mt-3">
+                  Editors and contributors appear here. Editors can add other editors and change settings. If you delete or leave a publication, published stories revert to drafts.
+                </p>
+              {:else}
+                <p class="text-center text-[#999999] text-sm py-6">Members appear here</p>
+              {/if}
+            {/if}
+          </div>
+
+          <!-- Publication Settings Accordion (editor only) -->
+          {#if currentUserIsEditor}
+            <div>
+              <button
+                type="button"
+                on:click={() => publicationSettingsOpen = !publicationSettingsOpen}
+                class="w-full flex items-center justify-between"
+              >
+                <span class="text-sm text-[#777777]">Publication settings</span>
+                <img
+                  src="/icons/icon-expand.svg"
+                  alt=""
+                  class="w-4 h-4 transition-transform"
+                  class:rotate-180={publicationSettingsOpen}
+                  style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+                />
+              </button>
+              <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
+
+              {#if publicationSettingsOpen}
+                <div class="space-y-6 mt-4">
+                  <ColorPalette
+                    selectedColor={team?.primary_color || '5422b0'}
+                    disabled={false}
+                    on:select={handleColorSelect}
+                  />
+
+                  <PublicationLogoUpload
+                    logoUrl={team?.logo_url || null}
+                    disabled={false}
+                    {primaryColor}
+                    fullWidth={true}
+                    on:upload={handleLogoUpload}
+                    on:remove={handleLogoRemove}
+                  />
+
+                  <ShareToggle
+                    enabled={team?.share_enabled || false}
+                    publicationName={currentTeamName}
+                    disabled={false}
+                    {primaryColor}
+                    on:toggle={handleShareToggle}
+                  />
+
+                  <PublicationLockToggle
+                    locked={team?.team_lock || false}
+                    disabled={false}
+                    {primaryColor}
+                    on:toggle={handleTeamLockToggle}
+                  />
+
+                  <!-- Delete Publication -->
                   <div>
                     <button
                       type="button"
-                      on:click={() => availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id && openJoinTeamConfirmation(availTeam)}
-                      class="w-full flex items-center justify-between py-3 text-left transition-colors border-b border-[#e0e0e0]"
-                      class:hover:bg-[#f5f5f5]={availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id}
-                      class:cursor-default={availTeam.publication_name === currentTeamName || joiningTeamId === availTeam.id}
+                      on:click={() => (deleteTeamConfirming = true)}
+                      disabled={deleteTeamConfirming}
+                      class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-opacity border-2 border-red-600 text-red-600"
+                      class:opacity-50={deleteTeamConfirming}
                     >
-                      <span class="text-base text-[#333333]">{availTeam.publication_name}</span>
-                      {#if availTeam.publication_name === currentTeamName}
-                        <img
-                          src="/icons/icon-check-fill.svg"
-                          alt="Current team"
-                          class="w-5 h-5"
-                          style="filter: {hexToFilter(primaryColor)};"
-                        />
-                      {:else}
-                        <img
-                          src="/icons/icon-circle.svg"
-                          alt=""
-                          class="w-5 h-5"
-                          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
-                        />
-                      {/if}
+                      {deleteTeamConfirming ? 'Deleting...' : 'Delete publication'}
                     </button>
-
-                    <!-- Inline join toolbar -->
-                    {#if joiningTeamId === availTeam.id}
-                      <div class="flex justify-end py-2 border-b border-[#e0e0e0]">
-                        {#if joiningTeamLocked}
-                          <div 
-                            class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
-                            style="background-color: #{primaryColor};"
-                          >
-                            <span class="opacity-70">Team locked</span>
-                            <span class="mx-3 opacity-60">|</span>
-                            <button
-                              type="button"
-                              on:click={cancelJoinTeam}
-                              class="transition-opacity hover:opacity-80"
-                            >
-                              OK
-                            </button>
-                          </div>
-                        {:else}
-                          <div 
-                            class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
-                            style="background-color: #{primaryColor};"
-                          >
-                            <button
-                              type="button"
-                              on:click={confirmJoinTeamInline}
-                              disabled={isJoiningTeam}
-                              class="transition-opacity"
-                              class:opacity-50={isJoiningTeam}
-                            >
-                              {isJoiningTeam ? 'Joining...' : 'Join team'}
-                            </button>
-                            <span class="mx-3 opacity-60">|</span>
-                            <button
-                              type="button"
-                              on:click={cancelJoinTeam}
-                              disabled={isJoiningTeam}
-                              class="transition-opacity hover:opacity-80"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        {/if}
-                      </div>
-                    {/if}
+                    <p class="text-sm text-[#999999] mt-2 text-center">
+                      Published stories revert to author drafts
+                    </p>
                   </div>
-                {/each}
-              </div>
-            {:else}
-              <p class="text-center text-[#999999] text-sm py-6">All teams appear here</p>
-            {/if}
-          </div>
-
-        <!-- Collaborators Section -->
-        <div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-[#777777]">Collaborators</span>
-              <span class="text-sm text-[#777777]">Editors</span>
-            </div>
-            <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
-
-            {#if teamMembers.length > 0}
-              <div>
-                {#each teamMembers as member (member.id)}
-                  <TeamMemberItem
-                    name={member.name}
-                    isEditor={member.is_editor}
-                    isCurrentUser={member.name === currentUserName}
-                    canRemove={currentUserIsEditor || member.name === currentUserName}
-                    canToggleEditor={currentUserIsEditor}
-                    {primaryColor}
-                    {secondaryColor}
-                    isConfirmingLeave={leavingMemberName === member.name && member.name === currentUserName}
-                    {isLeaving}
-                    isConfirmingEditorToggle={editorToggleMember?.name === member.name}
-                    {isTogglingEditor}
-                    on:remove={() => openLeaveTeamConfirmation(member.name)}
-                    on:startLeave={handleStartLeave}
-                    on:confirmLeave={handleConfirmLeave}
-                    on:cancelLeave={handleCancelLeave}
-                    on:startEditorToggle={handleStartEditorToggle}
-                    on:confirmEditorToggle={handleConfirmEditorToggle}
-                    on:cancelEditorToggle={handleCancelEditorToggle}
-                  />
-                {/each}
-              </div>
-            {:else}
-              <p class="text-center text-[#999999] text-sm py-6">Collaborators appear here</p>
-            {/if}
-
-            <!-- Explanation text below members list -->
-            {#if teamMembers.length > 0}
-              <p class="text-sm text-[#999999] mt-3">
-                To leave the publication, tap x. When you leave, all published stories revert to drafts. You cannot join more than one publication.
-              </p>
-            {/if}
-          </div>
-
-          <!-- Editor-only controls -->
-          {#if currentUserIsEditor}
-            <div class="space-y-6">
-              <!-- Color Palette -->
-              <ColorPalette
-                selectedColor={team?.primary_color || '5422b0'}
-                disabled={false}
-                on:select={handleColorSelect}
-              />
-
-              <!-- Logo Upload -->
-              <PublicationLogoUpload
-                logoUrl={team?.logo_url || null}
-                disabled={false}
-                {primaryColor}
-                on:upload={handleLogoUpload}
-                on:remove={handleLogoRemove}
-              />
-
-              <!-- Share Toggle -->
-              <ShareToggle
-                enabled={team?.share_enabled || false}
-                publicationName={currentTeamName}
-                disabled={false}
-                {primaryColor}
-                on:toggle={handleShareToggle}
-              />
-
-              <!-- Publication Lock Toggle -->
-              <PublicationLockToggle
-                locked={team?.team_lock || false}
-                disabled={false}
-                {primaryColor}
-                on:toggle={handleTeamLockToggle}
-              />
+                </div>
+              {/if}
             </div>
           {/if}
 
-        <!-- Logout Button -->
-        <div class="mt-6">
+        <!-- Log out Button -->
+        <div class="mt-6 flex justify-center">
           <button
             type="button"
             on:click={handleLogout}
-            class="w-full py-3 text-[#333333] text-sm font-medium"
+            class="py-2 px-6 rounded-lg text-sm font-medium transition-opacity border-2"
+            style="color: #{primaryColor}; border-color: #{primaryColor};"
           >
             Log out
           </button>
         </div>
-
-        <!-- Danger Zone (only for editors, at very bottom) -->
-        {#if currentUserIsEditor}
-          <div class="mt-6">
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-red-600">Danger zone</span>
-            </div>
-            <div class="w-full border-b border-[#e0e0e0] mt-2 mb-4"></div>
-            <button
-              type="button"
-              on:click={() => (deleteTeamConfirming = true)}
-              disabled={deleteTeamConfirming}
-              class="w-full py-2 px-4 rounded-full text-white text-sm font-medium transition-opacity bg-red-600 hover:bg-red-700"
-              class:opacity-50={deleteTeamConfirming}
-            >
-              {deleteTeamConfirming ? 'Deleting...' : 'Delete publication'}
-            </button>
-            <p class="text-sm text-[#999999] mt-2">
-              Published stories will revert to author drafts
-            </p>
-          </div>
-        {/if}
       </div>
     {/if}
 

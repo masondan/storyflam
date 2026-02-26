@@ -6,6 +6,7 @@
   export let logoUrl: string | null = null
   export let disabled: boolean = false
   export let primaryColor: string = '5422b0'
+  export let fullWidth: boolean = false
 
   const dispatch = createEventDispatcher<{ upload: { url: string }; remove: void }>()
 
@@ -97,7 +98,7 @@
 
 <div class="space-y-3">
   <div class="flex items-baseline justify-between pb-1 border-b border-[#e0e0e0]">
-    <span class="text-sm text-[#777777]">Upload a logo (square)</span>
+    <span class="text-sm text-[#777777]">Logo (square image only)</span>
   </div>
 
   <input
@@ -136,7 +137,10 @@
       type="button"
       on:click={triggerFileInput}
       disabled={disabled || uploading}
-      class="w-20 h-20 border-2 border-dashed border-[#777777] rounded-lg flex items-center justify-center transition-colors"
+      class="border-2 border-dashed border-[#777777] rounded-lg flex items-center justify-center transition-colors"
+      class:w-full={fullWidth}
+      class:h-20={true}
+      class:w-20={!fullWidth}
       class:opacity-50={disabled}
       class:cursor-not-allowed={disabled}
       class:hover:border-[#5422b0]={!disabled}
