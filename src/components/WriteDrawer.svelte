@@ -952,47 +952,41 @@
         <div class="flex items-center gap-3">
           <button 
             on:click={toggleBold} 
-            class="p-2.5 rounded-lg transition-all"
-            class:bg-purple-100={isBoldActive}
+            class="p-2 transition-all"
             aria-label="Bold text"
           >
             <img
               src="/icons/icon-bold.svg"
               alt=""
-              class="w-6 h-6 font-bold"
-              class:font-bold={isBoldActive}
-              style="filter: {isBoldActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'} font-weight: {isBoldActive ? '700' : '400'};"
+              class="w-6 h-6 transition-all"
+              style="filter: {isBoldActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%) drop-shadow(0.5px 0 0 rgba(84, 34, 176, 0.6)) drop-shadow(-0.5px 0 0 rgba(84, 34, 176, 0.6)) drop-shadow(0 0.5px 0 rgba(84, 34, 176, 0.6)) drop-shadow(0 -0.5px 0 rgba(84, 34, 176, 0.6))' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'};"
             />
           </button>
           <button 
             on:click={toggleHeading} 
-            class="p-2.5 rounded-lg transition-all"
-            class:bg-purple-100={isHeadingActive}
+            class="p-2 transition-all"
             aria-label="Add subhead"
           >
             <img
               src="/icons/icon-heading.svg"
               alt=""
-              class="w-6 h-6 font-bold"
-              class:font-bold={isHeadingActive}
-              style="filter: {isHeadingActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'} font-weight: {isHeadingActive ? '700' : '400'};"
+              class="w-6 h-6 transition-all"
+              style="filter: {isHeadingActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%) drop-shadow(0.5px 0 0 rgba(84, 34, 176, 0.6)) drop-shadow(-0.5px 0 0 rgba(84, 34, 176, 0.6)) drop-shadow(0 0.5px 0 rgba(84, 34, 176, 0.6)) drop-shadow(0 -0.5px 0 rgba(84, 34, 176, 0.6))' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'};"
             />
           </button>
           <button 
             on:click={openLinkModal} 
-            class="p-2.5 rounded-lg transition-all"
-            class:bg-purple-100={isLinkActive}
+            class="p-2 transition-all"
             aria-label="Add link"
           >
             <img
               src="/icons/icon-link.svg"
               alt=""
-              class="w-6 h-6 font-bold"
-              class:font-bold={isLinkActive}
-              style="filter: {isLinkActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%);' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'} font-weight: {isLinkActive ? '700' : '400'};"
+              class="w-6 h-6 transition-all"
+              style="filter: {isLinkActive ? 'invert(14%) sepia(95%) saturate(3500%) hue-rotate(256deg) brightness(75%) contrast(90%) drop-shadow(0.5px 0 0 rgba(84, 34, 176, 0.6)) drop-shadow(-0.5px 0 0 rgba(84, 34, 176, 0.6)) drop-shadow(0 0.5px 0 rgba(84, 34, 176, 0.6)) drop-shadow(0 -0.5px 0 rgba(84, 34, 176, 0.6))' : 'invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);'};"
             />
           </button>
-          <button on:click={insertSeparator} class="p-2.5" aria-label="Add separator">
+          <button on:click={insertSeparator} class="p-2" aria-label="Add separator">
             <img
               src="/icons/icon-separator.svg"
               alt=""
@@ -1002,7 +996,7 @@
           </button>
           <button 
             on:click={() => videoFileInput.click()} 
-            class="p-2.5" 
+            class="p-2" 
             aria-label="Add video"
             disabled={uploadingVideo}
           >
@@ -1021,7 +1015,7 @@
             class="hidden"
             on:change={handleVideoUpload}
           />
-          <button on:click={() => imageFileInput.click()} class="p-2.5" aria-label="Add image" disabled={uploadingImage}>
+          <button on:click={() => imageFileInput.click()} class="p-2" aria-label="Add image" disabled={uploadingImage}>
             <img
               src="/icons/icon-image.svg"
               alt=""
@@ -1042,7 +1036,7 @@
         <div class="w-px h-6 bg-[#999999]"></div>
 
         <div class="flex items-center gap-3">
-          <button on:click={openPreview} class="p-2.5" aria-label="Preview">
+          <button on:click={openPreview} class="p-2" aria-label="Preview">
             <img
               src="/icons/icon-preview.svg"
               alt=""
@@ -1053,7 +1047,7 @@
           {#if isPublishedStory}
             <button
               on:click={toggleSaveToolbar}
-              class="p-2.5 outline-none focus:outline-none"
+              class="p-2 outline-none focus:outline-none"
               aria-label="Save Changes"
             >
               <img
@@ -1066,7 +1060,7 @@
           {:else}
             <button
               on:click={togglePublishToolbar}
-              class="p-2.5 outline-none focus:outline-none"
+              class="p-2 outline-none focus:outline-none"
               aria-label="Publish"
             >
               <img
