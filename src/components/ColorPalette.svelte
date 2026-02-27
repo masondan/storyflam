@@ -14,8 +14,8 @@
 </script>
 
 <div class="space-y-3">
-  <div class="flex items-baseline justify-between border-b border-[#e0e0e0] pb-1">
-    <span class="text-sm text-[#777777]">Pick a theme</span>
+  <div class="flex items-baseline justify-between">
+    <span class="text-sm text-[#777777]">Theme colour</span>
   </div>
   
   <div class="flex gap-3 pt-1">

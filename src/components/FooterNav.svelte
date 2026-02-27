@@ -40,7 +40,7 @@
           src="/icons/icon-stories.svg"
           alt=""
           class="w-8 h-8"
-          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(75%) contrast(75%);"
         />
       {/if}
     </a>
@@ -73,7 +73,7 @@
           src="/icons/icon-publication.svg"
           alt=""
           class="w-8 h-8"
-          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(75%) contrast(75%);"
         />
       {/if}
     </a>
@@ -91,7 +91,7 @@
           src="/icons/icon-profile.svg"
           alt=""
           class="w-8 h-8"
-          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+          style="filter: invert(37%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(75%) contrast(75%);"
         />
       {/if}
     </a>

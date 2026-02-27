@@ -60,6 +60,13 @@
   let membersOpen = false
   let publicationSettingsOpen = false
 
+  // Toggle accordion with mutual exclusivity
+  function toggleAccordion(accordion: 'all' | 'members' | 'settings') {
+    allPublicationsOpen = accordion === 'all' ? !allPublicationsOpen : false
+    membersOpen = accordion === 'members' ? !membersOpen : false
+    publicationSettingsOpen = accordion === 'settings' ? !publicationSettingsOpen : false
+  }
+
   // Confirmation & modals
   let confirmationAction: ConfirmationAction = null
   let selectedMemberForRemoval: string | null = null
@@ -1381,7 +1388,7 @@
         <div>
             <button
               type="button"
-              on:click={() => allPublicationsOpen = !allPublicationsOpen}
+              on:click={() => toggleAccordion('all')}
               class="w-full flex items-center justify-between"
             >
               <span class="text-sm text-[#777777]">All publications</span>
@@ -1484,7 +1491,7 @@
         <div>
             <button
               type="button"
-              on:click={() => membersOpen = !membersOpen}
+              on:click={() => toggleAccordion('members')}
               class="w-full flex items-center justify-between"
             >
               <span class="text-sm text-[#777777]">Members</span>
@@ -1541,7 +1548,7 @@
             <div>
               <button
                 type="button"
-                on:click={() => publicationSettingsOpen = !publicationSettingsOpen}
+                on:click={() => toggleAccordion('settings')}
                 class="w-full flex items-center justify-between"
               >
                 <span class="text-sm text-[#777777]">Publication settings</span>

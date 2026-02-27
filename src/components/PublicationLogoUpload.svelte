@@ -97,7 +97,7 @@
 </script>
 
 <div class="space-y-3">
-  <div class="flex items-baseline justify-between pb-1 border-b border-[#e0e0e0]">
+  <div class="flex items-baseline justify-between">
     <span class="text-sm text-[#777777]">Logo (square image only)</span>
   </div>
 
