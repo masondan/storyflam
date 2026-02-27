@@ -261,6 +261,28 @@
       showNotification('error', 'Failed to update team lock')
     }
   }
+
+  let deleteConfirming = false
+
+  async function handleDeleteTeam() {
+    try {
+      const { error } = await supabase
+        .from('publications')
+        .delete()
+        .eq('course_id', courseId)
+        .eq('publication_name', team.publication_name)
+
+      if (error) throw error
+
+      showNotification('success', 'Publication deleted')
+      dispatch('updated')
+    } catch (error) {
+      console.error('Delete publication error:', error)
+      showNotification('error', 'Failed to delete publication')
+    } finally {
+      deleteConfirming = false
+    }
+  }
 </script>
 
 <div class="mb-2">
@@ -301,10 +323,10 @@
       class="mt-3 px-2 space-y-6"
       transition:slide={{ duration: 200 }}
     >
-      <!-- Team members Section -->
+      <!-- Members Section -->
       <div>
         <div class="flex items-center justify-between">
-          <span class="text-sm text-[#777777]">Team members</span>
+          <span class="text-sm text-[#777777]">Members</span>
           <span class="text-sm text-[#777777]">Editor</span>
         </div>
         <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
@@ -336,11 +358,6 @@
               />
             {/each}
           </div>
-
-          <!-- Explanation text below members list -->
-          <p class="text-xs text-[#999999] mt-3">
-            Teams must have at least one editor. To remove a member, tap X. When removed, all published stories will revert to drafts.
-          </p>
         {:else}
           <p class="text-center text-[#999999] text-sm py-6">No members</p>
         {/if}
@@ -358,6 +375,7 @@
         logoUrl={team.logo_url}
         disabled={false}
         {primaryColor}
+        fullWidth={true}
         on:upload={handleLogoUpload}
         on:remove={handleLogoRemove}
       />
@@ -378,6 +396,46 @@
         {primaryColor}
         on:toggle={handleTeamLockToggle}
       />
+
+      <!-- Delete Publication -->
+      <div>
+        <button
+          type="button"
+          on:click={() => (deleteConfirming = true)}
+          disabled={deleteConfirming}
+          class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-opacity border-2 border-red-600 text-red-600"
+          class:opacity-50={deleteConfirming}
+        >
+          {deleteConfirming ? 'Deleting...' : 'Delete publication'}
+        </button>
+      </div>
+
+      <!-- Delete Publication Confirmation Modal -->
+      {#if deleteConfirming}
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-2xl p-6 mx-4 max-w-sm">
+            <h2 class="text-lg font-semibold text-[#333333] mb-2">Delete publication</h2>
+            <p class="text-sm text-[#666666] mb-6">Are you sure? This cannot be undone.</p>
+
+            <div class="flex gap-3">
+              <button
+                type="button"
+                on:click={() => (deleteConfirming = false)}
+                class="flex-1 px-4 py-2 rounded-full text-[#333333] text-sm font-medium transition-all border border-[#ddd]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                on:click={handleDeleteTeam}
+                class="flex-1 px-4 py-2 rounded-full text-white text-sm font-medium transition-all bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

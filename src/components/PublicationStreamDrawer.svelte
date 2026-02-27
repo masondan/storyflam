@@ -78,8 +78,8 @@
   >
     <!-- Team Header -->
     <header 
-      class="py-6 text-center sticky top-0 z-40 shrink-0"
-      style="background-color: #{secondaryColor}cc;"
+      class="py-6 text-center sticky top-0 z-40 shrink-0 border-b-2"
+      style="background-color: #{secondaryColor}cc; border-bottom-color: #{primaryColor};"
     >
       <!-- Close button (in header for better interaction) -->
       <button
@@ -97,7 +97,8 @@
       </button>
 
       <div 
-        class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden"
+        class="w-16 h-16 mx-auto mb-3 rounded-lg overflow-hidden border-2"
+        style="border-color: #{primaryColor};"
       >
         {#if publicationLogoUrl}
           <img

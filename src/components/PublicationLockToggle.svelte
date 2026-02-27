@@ -35,6 +35,4 @@
       ></span>
     </button>
   </div>
-
-  <p class="text-sm text-[#999999]">This prevents others from joining your publication.</p>
 </div>
