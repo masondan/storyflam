@@ -468,18 +468,7 @@
       // Block embeds automatically create newlines; just move cursor after the embed
       quillInstance.setSelection(range.index + 1)
       
-      // Now get the placeholder element and add shimmer animation
-      const placeholderElement = quillInstance.root.querySelector(`[data-video-url="${placeholderId}"]`)
-      if (placeholderElement) {
-        placeholderElement.classList.add('animate-shimmer')
-      }
-      
-      // DEBUG: Check how many shimmer elements exist globally
-      const allShimmers = document.querySelectorAll('.animate-shimmer')
-      console.log(`[Video Upload] Elements with animate-shimmer class: ${allShimmers.length}`)
-      allShimmers.forEach((s, i) => {
-        console.log(`  Shimmer ${i}: ${s.tagName} ${s.className}`)
-      })
+      // Placeholder inserted, now awaiting upload completion
       
       // DEBUG: Log how many video wrappers exist
       const allVideos = quillInstance.root.querySelectorAll('[data-video-url]')
@@ -527,9 +516,6 @@
          if (sourceElement) {
            sourceElement.setAttribute('src', getOptimizedVideoUrl(result.url))
          }
-         
-         // Remove shimmer animation
-         placeholderNode.classList.remove('animate-shimmer')
          
          // Initialize Plyr on just this video instead of scanning entire editor
          if (video) {
@@ -829,15 +815,23 @@
         />
       </button>
       
-      <div class="flex items-center gap-2 text-sm text-[#777777]">
-        {#if uploadingImage}
-          <span>Uploading image...</span>
-        {:else if uploadingVideo}
-          <span>Uploading video...</span>
-        {:else if saving}
-          <span>Saving...</span>
-        {:else if lastSavedTime}
-          <span>{formatTimeAgo(lastSavedTime)}</span>
+      <div class="flex items-center justify-between gap-2 text-sm text-[#777777]">
+        <div class="flex items-center gap-2">
+          {#if uploadingImage}
+            <span>Uploading image</span>
+          {:else if uploadingVideo}
+            <span>Uploading video</span>
+          {:else if saving}
+            <span>Saving</span>
+          {:else if lastSavedTime}
+            <span>{formatTimeAgo(lastSavedTime)}</span>
+          {/if}
+        </div>
+        {#if uploadingImage || uploadingVideo || saving}
+          <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
         {/if}
       </div>
       </header>
@@ -889,11 +883,6 @@
            </button>
          {/if}
       </div>
-
-      <!-- Video Upload Shimmer (while uploading, before video appears) -->
-      {#if uploadingVideo}
-        <div class="my-4 w-full aspect-video rounded-lg bg-gradient-to-r from-[#d0d0d0] via-[#e8e8e8] to-[#d0d0d0] bg-[length:200%_100%] animate-shimmer"></div>
-      {/if}
 
       <!-- Word Count -->
       {#if wordCount > 0}
@@ -1110,15 +1099,6 @@
 {/if}
 
 <style>
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1126,21 +1106,6 @@
   to {
     opacity: 1;
   }
-}
-
-:global(.animate-shimmer) {
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-
-:global(.animate-shimmer video) {
-  opacity: 0 !important;
 }
 
 :global(.animate-fade-in) {
@@ -1151,6 +1116,16 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
+    text-decoration: none;
+    border: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  .title-input:focus {
+    outline: none;
+    border: none;
   }
 
   .title-input::selection {
@@ -1212,6 +1187,11 @@
     font-style: normal;
     left: 0;
     right: 0;
+    pointer-events: none;
+  }
+
+  .editor-content :global(.ql-editor:not(.ql-blank)::before) {
+    display: none !important;
   }
 
   .editor-content :global(.ql-editor p) {
