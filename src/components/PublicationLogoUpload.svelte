@@ -12,6 +12,7 @@
 
   let uploading = false
   let fileInput: HTMLInputElement
+  let isDragging = false
 
   const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
   const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
@@ -94,6 +95,33 @@
   function triggerFileInput() {
     if (!disabled) fileInput.click()
   }
+
+  function handleDragOver(event: DragEvent) {
+    if (disabled || logoUrl) return
+    event.preventDefault()
+    event.stopPropagation()
+    isDragging = true
+  }
+
+  function handleDragLeave(event: DragEvent) {
+    if (disabled || logoUrl) return
+    event.preventDefault()
+    event.stopPropagation()
+    isDragging = false
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (disabled || logoUrl) return
+    event.preventDefault()
+    event.stopPropagation()
+    isDragging = false
+
+    const files = event.dataTransfer?.files
+    if (files && files.length > 0) {
+      fileInput.files = files
+      handleFileSelect({ target: fileInput } as any)
+    }
+  }
 </script>
 
 <div class="space-y-3">
@@ -136,15 +164,20 @@
     <button
       type="button"
       on:click={triggerFileInput}
+      on:dragover={handleDragOver}
+      on:dragleave={handleDragLeave}
+      on:drop={handleDrop}
       disabled={disabled || uploading}
-      class="border-2 border-dashed border-[#777777] rounded-lg flex items-center justify-center transition-colors"
+      class="border-2 border-dashed rounded-lg flex items-center justify-center transition-colors transition-all"
       class:w-full={fullWidth}
       class:h-20={true}
       class:w-20={!fullWidth}
       class:opacity-50={disabled}
       class:cursor-not-allowed={disabled}
-      class:hover:border-[#5422b0]={!disabled}
-      style={!disabled ? `--hover-color: #${primaryColor}` : ''}
+      style={`
+        border-color: ${isDragging ? `#${primaryColor}` : '#777777'};
+        background-color: ${isDragging ? `#${primaryColor}` : 'transparent'}20;
+      `}
     >
       {#if uploading}
         <div class="w-6 h-6 border-2 border-[#777777] border-t-transparent rounded-full animate-spin"></div>
@@ -153,7 +186,7 @@
           src="/icons/icon-upload.svg"
           alt="Upload"
           class="w-6 h-6"
-          style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%);"
+          style={`filter: ${isDragging ? `invert(100%)` : `invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(55%) contrast(92%)`};`}
         />
       {/if}
     </button>

@@ -1119,9 +1119,10 @@
                 on:input={handleBylineInput}
                 on:focus={startBylineEdit}
                 maxlength="30"
-                class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all"
+                class="w-full bg-white rounded-lg px-4 py-3 text-sm outline-none transition-all border"
                 class:ring-2={bylineEditing}
-                style={bylineEditing ? `ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : ''}
+                style={bylineEditing ? `border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}; --placeholder-color: #888888;` : 'border-color: #999999;'}
+                placeholder="Enter your byline"
               />
               
               <!-- Helper text -->
@@ -1227,27 +1228,28 @@
                 </div>
                 
                 {#if currentTeamName && !publicationRenaming}
-                  <!-- Has publication, not renaming: show name -->
-                  <button
-                    type="button"
-                    on:click={() => { if (currentUserIsEditor) startPublicationRename() }}
-                    class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base text-left text-[#333333] outline-none"
-                    class:cursor-default={!currentUserIsEditor}
-                  >
-                    {currentTeamName}
-                  </button>
+                   <!-- Has publication, not renaming: show name -->
+                   <button
+                     type="button"
+                     on:click={() => { if (currentUserIsEditor) startPublicationRename() }}
+                     class="w-full bg-white rounded-lg px-4 py-3 text-sm text-left text-[#333333] outline-none border"
+                     class:cursor-default={!currentUserIsEditor}
+                     style="border-color: #999999;"
+                   >
+                     {currentTeamName}
+                   </button>
                 {:else if publicationRenaming}
-                  <!-- Renaming publication (editor only) -->
-                  <input
-                    id="publication-input"
-                    type="text"
-                    value={publicationRenameInput}
-                    on:input={handlePublicationRenameInput}
-                    use:autoFocusEnd
-                    maxlength="30"
-                    class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all ring-2"
-                    style="--tw-ring-color: #{primaryColor}"
-                  />
+                   <!-- Renaming publication (editor only) -->
+                   <input
+                     id="publication-input"
+                     type="text"
+                     value={publicationRenameInput}
+                     on:input={handlePublicationRenameInput}
+                     use:autoFocusEnd
+                     maxlength="30"
+                     class="w-full bg-white rounded-lg px-4 py-3 text-sm outline-none transition-all border ring-2"
+                     style="border-color: #{primaryColor}; --tw-ring-color: #{primaryColor}"
+                   />
                   
                   <p class="text-sm mt-2" style="color: #{publicationRenameValid === true ? '057373' : (publicationRenameValid === false ? '996633' : '777777')};">
                     {#if publicationRenameValid === false}
@@ -1259,19 +1261,19 @@
                     {/if}
                   </p>
                 {:else}
-                  <!-- No publication: create mode -->
-                  <input
-                    id="publication-input"
-                    type="text"
-                    value={createTeamInput}
-                    on:input={handleCreateTeamInput}
-                    on:focus={startTeamNameEdit}
-                    maxlength="30"
-                    placeholder="Create a new publication or skip to join a publication"
-                    class="w-full bg-[#efefef] rounded-lg px-4 py-3 text-base outline-none transition-all"
-                    class:ring-2={createTeamEditing}
-                    style={createTeamEditing ? `ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : ''}
-                  />
+                   <!-- No publication: create mode -->
+                   <input
+                     id="publication-input"
+                     type="text"
+                     value={createTeamInput}
+                     on:input={handleCreateTeamInput}
+                     on:focus={startTeamNameEdit}
+                     maxlength="30"
+                     placeholder="Create a new publication or skip to join a publication"
+                     class="w-full bg-white rounded-lg px-4 py-3 text-sm outline-none transition-all border"
+                     class:ring-2={createTeamEditing}
+                     style={createTeamEditing ? `border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : 'border-color: #999999;'}
+                   />
                   
                   {#if createTeamEditing}
                     <p class="text-sm mt-2" style="color: #{createTeamValid === true ? '057373' : (createTeamValid === false ? '996633' : '777777')};">
@@ -1665,7 +1667,7 @@
     {#if showLastMemberAdvisory}
       <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-[280px]">
-          <p class="text-sm text-[#333333] mb-4">Teams must have at least one editor. Delete the team, then join another.</p>
+          <p class="text-sm text-[#333333] mb-4">Publications must have at least one editor. Add another to leave, or delete the publication</p>
           <div class="flex justify-end">
             <button
               type="button"

@@ -141,7 +141,7 @@
         on:input={handleCourseInputChange}
         placeholder="Enter your course key"
         disabled={courseIdStatus === 'valid'}
-        class="flex-1 bg-transparent px-4 py-3 text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
+        class="flex-1 bg-transparent px-4 py-3 text-base text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
         maxlength="20"
       />
 
@@ -197,7 +197,7 @@
           on:input={handleBylineInputChange}
           placeholder="Enter your byline"
           disabled={bylineStatus === 'valid'}
-          class="flex-1 bg-transparent px-4 py-3 text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
+          class="flex-1 bg-transparent px-4 py-3 text-base text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
           maxlength="30"
         />
 
