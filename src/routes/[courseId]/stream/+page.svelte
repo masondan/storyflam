@@ -271,9 +271,10 @@
     {#if !sessionTeamName}
       <div class="flex items-center justify-center h-full">
         <div class="text-center">
-          <p class="text-[#999999] text-sm">
+          <p class="text-[#777777] text-base">Nothing to show yet.</p>
+          <p class="text-[#999999] text-sm mt-2">
             Create or join a publication to<br />
-            see your published stories here
+            see published stories here
           </p>
         </div>
       </div>
@@ -286,8 +287,7 @@
         <div class="text-center">
           <p class="text-[#777777] text-base">Nothing to show yet.</p>
           <p class="text-[#999999] text-sm mt-2">
-            Published stories from your team<br />
-            will appear here.
+            Published stories appear here.
           </p>
         </div>
       </div>

@@ -325,7 +325,7 @@
           <p class="text-[#777777] text-base">Nothing to show yet.</p>
           {#if activeTab === 'drafts'}
             <p class="text-[#999999] text-sm mt-2">
-              Your drafts appear here.<br />To publish a story, create<br />or join a publication in settings
+              Your drafts appear here.
             </p>
           {:else}
             <p class="text-[#999999] text-sm mt-2">
