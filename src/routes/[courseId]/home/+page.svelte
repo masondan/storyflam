@@ -263,33 +263,21 @@
       <div class="flex gap-6">
         <button
           on:click={() => { activeTab = 'drafts'; selectMode = false; selectedIds = new Set() }}
-          class="pb-2 text-base font-medium transition-colors relative"
-          class:text-[#5422b0]={activeTab === 'drafts'}
+          class="text-xl font-semibold transition-colors pb-1 border-b-2"
           class:text-[#777777]={activeTab !== 'drafts'}
-          style={activeTab === 'drafts' ? `color: #${$teamColors.primary}` : ''}
+          class:border-transparent={activeTab !== 'drafts'}
+          style={activeTab === 'drafts' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
         >
           Drafts
-          {#if activeTab === 'drafts'}
-            <span 
-              class="absolute bottom-0 left-0 right-0 h-[2px]"
-              style="background-color: #{$teamColors.primary};"
-            ></span>
-          {/if}
         </button>
         <button
           on:click={() => { activeTab = 'published'; selectMode = false; selectedIds = new Set() }}
-          class="pb-2 text-base font-medium transition-colors relative"
-          class:text-[#5422b0]={activeTab === 'published'}
+          class="text-xl font-semibold transition-colors pb-1 border-b-2"
           class:text-[#777777]={activeTab !== 'published'}
-          style={activeTab === 'published' ? `color: #${$teamColors.primary}` : ''}
+          class:border-transparent={activeTab !== 'published'}
+          style={activeTab === 'published' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
         >
           Published
-          {#if activeTab === 'published'}
-            <span 
-              class="absolute bottom-0 left-0 right-0 h-[2px]"
-              style="background-color: #{$teamColors.primary};"
-            ></span>
-          {/if}
         </button>
       </div>
 
