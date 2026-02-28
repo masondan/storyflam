@@ -1442,7 +1442,7 @@
                               class="flex items-center rounded-full px-4 py-2 text-white text-sm font-medium"
                               style="background-color: #{primaryColor};"
                             >
-                              <span class="opacity-70">Team locked</span>
+                              <span class="opacity-70">Publication locked</span>
                               <span class="mx-3 opacity-60">|</span>
                               <button
                                 type="button"
@@ -1464,7 +1464,7 @@
                                 class="transition-opacity"
                                 class:opacity-50={isJoiningTeam}
                               >
-                                {isJoiningTeam ? 'Joining...' : 'Join team'}
+                                {isJoiningTeam ? 'Joining...' : 'Join publication'}
                               </button>
                               <span class="mx-3 opacity-60">|</span>
                               <button
@@ -1482,7 +1482,6 @@
                     </div>
                   {/each}
                 </div>
-                <p class="text-sm text-[#999999] mt-3">You can create or join one publication only.</p>
               {:else}
                 <p class="text-center text-[#999999] text-sm py-6">All publications appear here</p>
               {/if}
