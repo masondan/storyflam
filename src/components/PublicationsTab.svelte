@@ -79,7 +79,7 @@
     <p class="text-[#999999] text-center py-8">Publications appear here</p>
   {:else}
     <div>
-      <span class="text-sm text-[#777777] mb-3 block">Publications</span>
+      <span style="font-size: 16px; font-weight: 500; color: #1f1f1f;" class="mb-3 block">Publications</span>
       
       {#each teams as team (team.id)}
         <PublicationExpandable

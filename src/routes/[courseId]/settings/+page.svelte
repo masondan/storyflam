@@ -1077,7 +1077,9 @@
       <button
         type="button"
         on:click={() => activeTab = 'settings'}
-        class="text-xl font-semibold transition-colors pb-1 border-b-2"
+        class="text-xl transition-colors pb-1 border-b-2"
+        class:font-bold={activeTab === 'settings'}
+        class:font-medium={activeTab !== 'settings'}
         class:text-[#777777]={activeTab !== 'settings'}
         class:border-transparent={activeTab !== 'settings'}
         style={activeTab === 'settings' ? `color: #${primaryColor}; border-bottom-color: #${primaryColor};` : ''}
@@ -1089,7 +1091,9 @@
         <button
           type="button"
           on:click={() => activeTab = 'admin'}
-          class="text-xl font-semibold transition-colors pb-1 border-b-2"
+          class="text-xl transition-colors pb-1 border-b-2"
+          class:font-bold={activeTab === 'admin'}
+          class:font-medium={activeTab !== 'admin'}
           class:text-[#777777]={activeTab !== 'admin'}
           class:border-transparent={activeTab !== 'admin'}
           style={activeTab === 'admin' ? `color: #${primaryColor}; border-bottom-color: #${primaryColor};` : ''}
@@ -1108,21 +1112,21 @@
             <!-- Left column: label, input, helper text -->
             <div class="flex-1">
               <div class="flex items-center justify-between mb-2">
-                <label for="byline-input" class="text-sm text-[#777777]">Byline</label>
+                 <label for="byline-input" style="font-size: 16px; color: #1f1f1f; font-weight: 500;">Byline</label>
                 <span class="text-xs text-[#999999]">{bylineName.length} / 30</span>
               </div>
               
               <input
-                id="byline-input"
-                type="text"
-                value={bylineName}
-                on:input={handleBylineInput}
-                on:focus={startBylineEdit}
-                maxlength="30"
-                class="w-full bg-white rounded-lg px-4 py-3 text-sm outline-none transition-all border"
-                class:ring-2={bylineEditing}
-                style={bylineEditing ? `border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}; --placeholder-color: #888888;` : 'border-color: #999999;'}
-                placeholder="Enter your byline"
+                 id="byline-input"
+                 type="text"
+                 value={bylineName}
+                 on:input={handleBylineInput}
+                 on:focus={startBylineEdit}
+                 maxlength="30"
+                 class="w-full bg-white rounded-lg px-4 py-3 outline-none transition-all border"
+                 class:ring-2={bylineEditing}
+                 style={bylineEditing ? `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}; --placeholder-color: #888888;` : `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #999999;`}
+                 placeholder="Enter your byline"
               />
               
               <!-- Helper text -->
@@ -1215,7 +1219,7 @@
               <!-- Left column: label, input -->
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-2">
-                  <label for="publication-input" class="text-sm text-[#777777]">My publication</label>
+                  <label for="publication-input" style="font-size: 16px; color: #1f1f1f; font-weight: 500;">My publication</label>
                   <span class="text-xs text-[#999999]">
                     {#if publicationRenaming}
                       {publicationRenameInput.length} / 30
@@ -1232,24 +1236,24 @@
                    <button
                      type="button"
                      on:click={() => { if (currentUserIsEditor) startPublicationRename() }}
-                     class="w-full bg-white rounded-lg px-4 py-3 text-sm text-left text-[#333333] outline-none border"
+                     class="w-full bg-white rounded-lg px-4 py-3 text-left outline-none border"
                      class:cursor-default={!currentUserIsEditor}
-                     style="border-color: #999999;"
+                     style="font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #999999;"
                    >
                      {currentTeamName}
                    </button>
                 {:else if publicationRenaming}
                    <!-- Renaming publication (editor only) -->
                    <input
-                     id="publication-input"
-                     type="text"
-                     value={publicationRenameInput}
-                     on:input={handlePublicationRenameInput}
-                     use:autoFocusEnd
-                     maxlength="30"
-                     class="w-full bg-white rounded-lg px-4 py-3 text-sm outline-none transition-all border ring-2"
-                     style="border-color: #{primaryColor}; --tw-ring-color: #{primaryColor}"
-                   />
+                      id="publication-input"
+                      type="text"
+                      value={publicationRenameInput}
+                      on:input={handlePublicationRenameInput}
+                      use:autoFocusEnd
+                      maxlength="30"
+                      class="w-full bg-white rounded-lg px-4 py-3 outline-none transition-all border ring-2"
+                      style="font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #{primaryColor}; --tw-ring-color: #{primaryColor}"
+                    />
                   
                   <p class="text-sm mt-2" style="color: #{publicationRenameValid === true ? '057373' : (publicationRenameValid === false ? '996633' : '777777')};">
                     {#if publicationRenameValid === false}
@@ -1263,17 +1267,17 @@
                 {:else}
                    <!-- No publication: create mode -->
                    <input
-                     id="publication-input"
-                     type="text"
-                     value={createTeamInput}
-                     on:input={handleCreateTeamInput}
-                     on:focus={startTeamNameEdit}
-                     maxlength="30"
-                     placeholder="Create a new publication or skip to join a publication"
-                     class="w-full bg-white rounded-lg px-4 py-3 text-sm outline-none transition-all border"
-                     class:ring-2={createTeamEditing}
-                     style={createTeamEditing ? `border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : 'border-color: #999999;'}
-                   />
+                      id="publication-input"
+                      type="text"
+                      value={createTeamInput}
+                      on:input={handleCreateTeamInput}
+                      on:focus={startTeamNameEdit}
+                      maxlength="30"
+                      placeholder="Create a new publication or skip to join a publication"
+                      class="w-full bg-white rounded-lg px-4 py-3 outline-none transition-all border"
+                      class:ring-2={createTeamEditing}
+                      style={createTeamEditing ? `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #999999;`}
+                    />
                   
                   {#if createTeamEditing}
                     <p class="text-sm mt-2" style="color: #{createTeamValid === true ? '057373' : (createTeamValid === false ? '996633' : '777777')};">
@@ -1393,7 +1397,7 @@
               on:click={() => toggleAccordion('all')}
               class="w-full flex items-center justify-between"
             >
-              <span class="text-sm text-[#777777]">All publications</span>
+              <span style="font-size: 16px; font-weight: 500;" class:text-[#1f1f1f]={allPublicationsOpen} class:text-[#777777]={!allPublicationsOpen}>All publications</span>
               <img
                 src="/icons/icon-expand.svg"
                 alt=""
@@ -1416,7 +1420,7 @@
                         class:hover:bg-[#f5f5f5]={availTeam.publication_name !== currentTeamName && joiningTeamId !== availTeam.id}
                         class:cursor-default={availTeam.publication_name === currentTeamName || joiningTeamId === availTeam.id}
                       >
-                        <span class="text-base text-[#333333]">{availTeam.publication_name}</span>
+                        <span style="font-size: 16px; font-weight: 400; color: #1f1f1f;">{availTeam.publication_name}</span>
                         {#if availTeam.publication_name === currentTeamName}
                           <img
                             src="/icons/icon-check-fill.svg"
@@ -1495,7 +1499,7 @@
               on:click={() => toggleAccordion('members')}
               class="w-full flex items-center justify-between"
             >
-              <span class="text-sm text-[#777777]">Members</span>
+              <span style="font-size: 16px; font-weight: 500;" class:text-[#1f1f1f]={membersOpen} class:text-[#777777]={!membersOpen}>Members</span>
               <img
                 src="/icons/icon-expand.svg"
                 alt=""
@@ -1552,7 +1556,7 @@
                 on:click={() => toggleAccordion('settings')}
                 class="w-full flex items-center justify-between"
               >
-                <span class="text-sm text-[#777777]">Publication settings</span>
+                <span style="font-size: 16px; font-weight: 500;" class:text-[#1f1f1f]={publicationSettingsOpen} class:text-[#777777]={!publicationSettingsOpen}>Publication settings</span>
                 <img
                   src="/icons/icon-expand.svg"
                   alt=""

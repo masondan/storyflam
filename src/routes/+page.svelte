@@ -112,6 +112,13 @@
 
 <svelte:head>
   <title>StoryFlam - Login</title>
+  <style>
+    :global(input[placeholder="Enter your course key"]::placeholder),
+    :global(input[placeholder="Enter your byline"]::placeholder) {
+      font-size: 16px;
+      color: #777777;
+    }
+  </style>
 </svelte:head>
 
 <div class="min-h-screen bg-accent-brand flex flex-col items-center px-6 relative">
@@ -141,13 +148,14 @@
         on:input={handleCourseInputChange}
         placeholder="Enter your course key"
         disabled={courseIdStatus === 'valid'}
-        class="flex-1 bg-transparent px-4 py-3 text-base text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
+        class="flex-1 bg-transparent px-4 py-3 text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
+        style="font-size: 16px; color: #1f1f1f;"
         maxlength="20"
       />
 
       {#if courseIdStatus === 'valid'}
         <!-- Check icon: purple circle with white checkmark -->
-        <div class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center">
+        <div class="mr-3 w-8 h-8 flex-shrink-0 rounded-full bg-accent-brand flex items-center justify-center">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
             <path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"/>
           </svg>
@@ -157,7 +165,7 @@
         <button
           on:click={resetCourseInput}
           type="button"
-          class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center"
+          class="mr-3 w-8 h-8 flex-shrink-0 rounded-full bg-accent-brand flex items-center justify-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
             <path d="M12 10.5858L16.2426 6.34315L17.6568 7.75736L13.4142 12L17.6568 16.2426L16.2426 17.6569L12 13.4142L7.75736 17.6569L6.34315 16.2426L10.5858 12L6.34315 7.75736L7.75736 6.34315L12 10.5858Z"/>
@@ -168,7 +176,7 @@
         <button
           on:click={handleCourseSubmit}
           disabled={courseIdStatus === 'loading'}
-          class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center"
+          class="mr-3 w-8 h-8 flex-shrink-0 rounded-full bg-accent-brand flex items-center justify-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
             <path d="M13.1714 12.0007L8.22168 7.05093L9.63589 5.63672L15.9999 12.0007L9.63589 18.3646L8.22168 16.9504L13.1714 12.0007Z"/>
@@ -197,13 +205,14 @@
           on:input={handleBylineInputChange}
           placeholder="Enter your byline"
           disabled={bylineStatus === 'valid'}
-          class="flex-1 bg-transparent px-4 py-3 text-base text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
+          class="flex-1 bg-transparent px-4 py-3 text-text-primary placeholder-text-secondary outline-none disabled:opacity-75"
+          style="font-size: 16px; color: #1f1f1f;"
           maxlength="30"
         />
 
         {#if bylineStatus === 'valid'}
           <!-- Check icon: purple circle with white checkmark -->
-          <div class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center">
+          <div class="mr-3 w-8 h-8 flex-shrink-0 rounded-full bg-accent-brand flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
               <path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"/>
             </svg>
@@ -213,7 +222,7 @@
           <button
             on:click={resetBylineInput}
             type="button"
-            class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center"
+            class="mr-3 w-8 h-8 flex-shrink-0 rounded-full bg-accent-brand flex items-center justify-center"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
               <path d="M12 10.5858L16.2426 6.34315L17.6568 7.75736L13.4142 12L17.6568 16.2426L16.2426 17.6569L12 13.4142L7.75736 17.6569L6.34315 16.2426L10.5858 12L6.34315 7.75736L7.75736 6.34315L12 10.5858Z"/>
@@ -224,7 +233,7 @@
           <button
             on:click={handleBylineSubmit}
             disabled={bylineStatus === 'loading'}
-            class="mr-3 w-8 h-8 rounded-full bg-accent-brand flex items-center justify-center"
+            class="mr-3 w-8 h-8 flex-shrink-0 rounded-full bg-accent-brand flex items-center justify-center"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="white">
               <path d="M13.1714 12.0007L8.22168 7.05093L9.63589 5.63672L15.9999 12.0007L9.63589 18.3646L8.22168 16.9504L13.1714 12.0007Z"/>

@@ -126,7 +126,7 @@
 
 <div class="space-y-3">
   <div class="flex items-baseline justify-between">
-    <span class="text-sm text-[#777777]">Logo (square image only)</span>
+    <span style="font-size: 16px; color: #1f1f1f;">Logo (square image only)</span>
   </div>
 
   <input

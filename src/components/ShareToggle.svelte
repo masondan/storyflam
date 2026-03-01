@@ -35,7 +35,7 @@
 
 <div class="space-y-3">
   <div class="flex items-center justify-between pb-1 border-b border-[#e0e0e0]">
-    <span class="text-sm text-[#777777]">Share your publication</span>
+    <span style="font-size: 16px; color: #1f1f1f;">Share your publication</span>
     
     <button
       type="button"

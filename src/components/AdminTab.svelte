@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { goto } from '$app/navigation'
   import { supabase } from '$lib/supabase'
   import { showNotification, session } from '$lib/stores'
   import { uploadImage, compressImage, MAX_IMAGE_FILE_SIZE, ALLOWED_IMAGE_TYPES } from '$lib/cloudinary'
@@ -295,8 +296,11 @@
       deleteConfirmText = ''
       deleteStep = 'initial'
 
-      // Reload the trainer's page as well
-      window.location.reload()
+      // Clear session and redirect to login
+      session.logout()
+      setTimeout(() => {
+        goto('/')
+      }, 500)
     } catch (error) {
       console.error('Clear course error:', error)
       showNotification('error', 'Failed to clear course')

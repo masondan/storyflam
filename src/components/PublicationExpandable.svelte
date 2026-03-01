@@ -293,7 +293,7 @@
       on:click={toggleExpand}
       class="flex-1 flex items-center justify-between bg-[#efefef] rounded-lg px-4 py-3"
     >
-      <span class="text-base font-medium text-[#333]">{team.publication_name}</span>
+      <span style="font-size: 16px; font-weight: 500; color: #1f1f1f;">{team.publication_name}</span>
       <img
         src={expanded ? '/icons/icon-collapse.svg' : '/icons/icon-expand.svg'}
         alt=""
@@ -326,8 +326,8 @@
       <!-- Members Section -->
       <div>
         <div class="flex items-center justify-between">
-          <span class="text-sm text-[#777777]">Members</span>
-          <span class="text-sm text-[#777777]">Editor</span>
+          <span style="font-size: 16px; font-weight: 500; color: #1f1f1f;">Members</span>
+          <span style="font-size: 16px; font-weight: 500; color: #1f1f1f;">Editor</span>
         </div>
         <div class="w-full border-b border-[#e0e0e0] mt-2"></div>
 

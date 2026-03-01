@@ -93,7 +93,7 @@
       <div class="w-4 mr-3"></div>
     {/if}
 
-    <span class="flex-1 text-base text-[#333333]">
+    <span class="flex-1" style="font-size: 16px; font-weight: 400; color: #1f1f1f;">
       {name}{isCurrentUser ? ' (you)' : ''}
     </span>
 

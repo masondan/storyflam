@@ -15,7 +15,7 @@
 
 <div class="space-y-3">
   <div class="flex items-baseline justify-between">
-    <span class="text-sm text-[#777777]">Theme colour</span>
+    <span style="font-size: 16px; color: #1f1f1f;">Theme colour</span>
   </div>
   
   <div class="flex gap-3 pt-1">

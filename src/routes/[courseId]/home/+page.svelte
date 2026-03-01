@@ -263,7 +263,9 @@
       <div class="flex gap-6">
         <button
           on:click={() => { activeTab = 'drafts'; selectMode = false; selectedIds = new Set() }}
-          class="text-xl font-semibold transition-colors pb-1 border-b-2"
+          class="text-xl transition-colors pb-1 border-b-2"
+          class:font-bold={activeTab === 'drafts'}
+          class:font-medium={activeTab !== 'drafts'}
           class:text-[#777777]={activeTab !== 'drafts'}
           class:border-transparent={activeTab !== 'drafts'}
           style={activeTab === 'drafts' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
@@ -272,7 +274,9 @@
         </button>
         <button
           on:click={() => { activeTab = 'published'; selectMode = false; selectedIds = new Set() }}
-          class="text-xl font-semibold transition-colors pb-1 border-b-2"
+          class="text-xl transition-colors pb-1 border-b-2"
+          class:font-bold={activeTab === 'published'}
+          class:font-medium={activeTab !== 'published'}
           class:text-[#777777]={activeTab !== 'published'}
           class:border-transparent={activeTab !== 'published'}
           style={activeTab === 'published' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
