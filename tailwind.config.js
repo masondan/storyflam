@@ -21,7 +21,7 @@ export default {
         'color-overlay': 'rgba(31, 31, 31, 0.1)',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
       },
       fontSize: {
         'base': '1.125rem',
