@@ -1265,31 +1265,23 @@
                     {/if}
                   </p>
                 {:else}
-                   <!-- No publication: create mode -->
-                   <input
-                      id="publication-input"
-                      type="text"
-                      value={createTeamInput}
-                      on:input={handleCreateTeamInput}
-                      on:focus={startTeamNameEdit}
-                      maxlength="30"
-                      placeholder="Create a new publication or skip to join a publication"
-                      class="w-full bg-white rounded-lg px-4 py-3 outline-none transition-all border"
-                      class:ring-2={createTeamEditing}
-                      style={createTeamEditing ? `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #999999;`}
-                    />
-                  
-                  {#if createTeamEditing}
-                    <p class="text-sm mt-2" style="color: #{createTeamValid === true ? '057373' : (createTeamValid === false ? '996633' : '777777')};">
-                      {#if createTeamValid === false}
-                        Name taken. Try again
-                      {:else if createTeamValid === true}
-                        Name available
-                      {:else}
-                        Choose a publication name
-                      {/if}
-                    </p>
-                  {/if}
+                    <!-- No publication: create mode -->
+                    <input
+                       id="publication-input"
+                       type="text"
+                       value={createTeamInput}
+                       on:input={handleCreateTeamInput}
+                       on:focus={startTeamNameEdit}
+                       maxlength="30"
+                       placeholder="Choose a name"
+                       class="w-full bg-white rounded-lg px-4 py-3 outline-none transition-all border"
+                       class:ring-2={createTeamEditing}
+                       style={createTeamEditing ? `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #${primaryColor}; ring-color: #${primaryColor}; --tw-ring-color: #${primaryColor}` : `font-size: 16px; font-weight: 400; line-height: 1.5; color: #1f1f1f; border-color: #999999;`}
+                     />
+                   
+                   {#if !createTeamEditing}
+                     <p class="text-sm mt-2 text-[#777777]">Or join an existing publication below</p>
+                   {/if}
                 {/if}
               </div>
 
