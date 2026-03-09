@@ -160,21 +160,64 @@
 
     const newCourseId = editedCourseId.trim()
 
-    const { error } = await supabase
+    // Validate new course ID format
+    if (!newCourseId || newCourseId.length < 3 || newCourseId.length > 20) {
+      showNotification('error', 'Course ID must be 3-20 characters.')
+      courseIdSaving = false
+      return
+    }
+
+    // Check if new course ID already exists
+    const { data: existing } = await supabase
+      .from('newslabs')
+      .select('course_id')
+      .eq('course_id', newCourseId)
+      .maybeSingle()
+
+    if (existing) {
+      showNotification('error', 'That course ID is already in use. Try another.')
+      courseIdSaving = false
+      return
+    }
+
+    // Must update all child tables BEFORE newslabs because foreign keys
+    // have ON DELETE CASCADE but no ON UPDATE CASCADE
+    const childTables = ['activity_log', 'stories', 'publications', 'journalists'] as const
+    for (const table of childTables) {
+      const { error } = await supabase
+        .from(table)
+        .update({ course_id: newCourseId })
+        .eq('course_id', courseId)
+      if (error) {
+        console.error(`[AdminTab] Failed to update ${table}:`, error)
+        showNotification('error', `Failed to update ${table}: ${error.message}`)
+        courseIdSaving = false
+        return
+      }
+    }
+
+    // Now update the parent newslabs table
+    const { error, data } = await supabase
       .from('newslabs')
       .update({ 
         course_id: newCourseId,
         updated_at: new Date().toISOString()
       })
       .eq('course_id', courseId)
+      .select()
 
     if (error) {
-      showNotification('error', 'Failed to change course ID. Try again.')
+      console.error('[AdminTab] saveCourseId error:', error)
+      showNotification('error', `Failed to change course ID: ${error.message}`)
+      courseIdSaving = false
+    } else if (!data || data.length === 0) {
+      console.error('[AdminTab] saveCourseId: no rows updated (possible RLS block)')
+      showNotification('error', 'Failed to change course ID. Update was blocked.')
       courseIdSaving = false
     } else {
-      showNotification('success', 'Course ID changed')
-      // Redirect to new course URL
-      await goto(`/${newCourseId}/settings`)
+      showNotification('success', 'Course ID changed. Logging you out...')
+      session.logout()
+      await goto('/')
     }
   }
 
