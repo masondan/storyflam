@@ -170,14 +170,12 @@
 
     if (error) {
       showNotification('error', 'Failed to change course ID. Try again.')
+      courseIdSaving = false
     } else {
       showNotification('success', 'Course ID changed')
-      displayCourseId = newCourseId
-      courseIdEditing = false
-      courseIdStep = 'initial'
+      // Redirect to new course URL
+      await goto(`/${newCourseId}/settings`)
     }
-
-    courseIdSaving = false
   }
 
   async function handleFallbackImageUpload(event: Event) {
