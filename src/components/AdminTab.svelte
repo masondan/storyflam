@@ -200,7 +200,21 @@
       return
     }
 
-    // Step 2: Insert new row with new course_id
+    // Step 2a: Clear unique fields on old row so the new row can use them
+    const tempTrainerId = `__temp_${crypto.randomUUID()}`
+    const { error: clearErr } = await supabase
+      .from('newslabs')
+      .update({ trainer_id: tempTrainerId, guest_editor_id: null })
+      .eq('course_id', courseId)
+
+    if (clearErr) {
+      console.error('[AdminTab] Failed to clear old unique fields:', clearErr)
+      showNotification('error', 'Failed to prepare course ID change.')
+      courseIdSaving = false
+      return
+    }
+
+    // Step 2b: Insert new row with new course_id
     const { error: insertErr } = await supabase
       .from('newslabs')
       .insert({
