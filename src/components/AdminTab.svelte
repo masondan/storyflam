@@ -180,8 +180,46 @@
       return
     }
 
-    // Must update all child tables BEFORE newslabs because foreign keys
-    // have ON DELETE CASCADE but no ON UPDATE CASCADE
+    // FK constraints prevent both update orders (chicken-and-egg), so:
+    // 1. Fetch current newslabs row
+    // 2. Insert a NEW row with the new course_id (copying all fields)
+    // 3. Move all child tables to the new course_id
+    // 4. Delete the old newslabs row
+
+    // Step 1: Fetch current row
+    const { data: current, error: fetchErr } = await supabase
+      .from('newslabs')
+      .select('*')
+      .eq('course_id', courseId)
+      .single()
+
+    if (fetchErr || !current) {
+      console.error('[AdminTab] Failed to fetch current newslabs row:', fetchErr)
+      showNotification('error', 'Failed to read current course data.')
+      courseIdSaving = false
+      return
+    }
+
+    // Step 2: Insert new row with new course_id
+    const { error: insertErr } = await supabase
+      .from('newslabs')
+      .insert({
+        course_id: newCourseId,
+        trainer_id: current.trainer_id,
+        guest_editor_id: current.guest_editor_id,
+        fallback_image_url: current.fallback_image_url,
+        created_at: current.created_at,
+        updated_at: new Date().toISOString()
+      })
+
+    if (insertErr) {
+      console.error('[AdminTab] Failed to insert new newslabs row:', insertErr)
+      showNotification('error', `Failed to create new course ID: ${insertErr.message}`)
+      courseIdSaving = false
+      return
+    }
+
+    // Step 3: Move all child tables to new course_id
     const childTables = ['activity_log', 'stories', 'publications', 'journalists'] as const
     for (const table of childTables) {
       const { error } = await supabase
@@ -190,35 +228,26 @@
         .eq('course_id', courseId)
       if (error) {
         console.error(`[AdminTab] Failed to update ${table}:`, error)
-        showNotification('error', `Failed to update ${table}: ${error.message}`)
+        showNotification('error', `Failed to migrate ${table}: ${error.message}`)
         courseIdSaving = false
         return
       }
     }
 
-    // Now update the parent newslabs table
-    const { error, data } = await supabase
+    // Step 4: Delete old newslabs row
+    const { error: deleteErr } = await supabase
       .from('newslabs')
-      .update({ 
-        course_id: newCourseId,
-        updated_at: new Date().toISOString()
-      })
+      .delete()
       .eq('course_id', courseId)
-      .select()
 
-    if (error) {
-      console.error('[AdminTab] saveCourseId error:', error)
-      showNotification('error', `Failed to change course ID: ${error.message}`)
-      courseIdSaving = false
-    } else if (!data || data.length === 0) {
-      console.error('[AdminTab] saveCourseId: no rows updated (possible RLS block)')
-      showNotification('error', 'Failed to change course ID. Update was blocked.')
-      courseIdSaving = false
-    } else {
-      showNotification('success', 'Course ID changed. Logging you out...')
-      session.logout()
-      await goto('/')
+    if (deleteErr) {
+      console.error('[AdminTab] Failed to delete old newslabs row:', deleteErr)
+      showNotification('error', `Course ID changed but cleanup failed: ${deleteErr.message}`)
     }
+
+    showNotification('success', 'Course ID changed. Logging you out...')
+    session.logout()
+    await goto('/')
   }
 
   async function handleFallbackImageUpload(event: Event) {
