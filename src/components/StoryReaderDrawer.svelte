@@ -118,7 +118,7 @@
   <style>
   .story-content :global(p) {
     margin-bottom: 0.5rem;
-    font-size: 1rem;
+    font-size: 1.0625rem;
     line-height: 1.625;
     color: #333333;
   }

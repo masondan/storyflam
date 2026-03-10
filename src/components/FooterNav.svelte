@@ -34,12 +34,12 @@
       aria-label="My Stories"
     >
       {#if isHomePage}
-        <div class="w-8 h-8" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-stories-fill.svg'); mask-image: url('/icons/icon-stories-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+        <div class="w-9 h-9" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-stories-fill.svg'); mask-image: url('/icons/icon-stories-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
       {:else}
         <img
           src="/icons/icon-stories.svg"
           alt=""
-          class="w-8 h-8"
+          class="w-9 h-9"
           style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(85%) contrast(75%);"
         />
       {/if}
@@ -67,12 +67,12 @@
       aria-label="My Publication"
     >
       {#if isStreamPage}
-        <div class="w-8 h-8" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-publication-fill.svg'); mask-image: url('/icons/icon-publication-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+        <div class="w-9 h-9" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-publication-fill.svg'); mask-image: url('/icons/icon-publication-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
       {:else}
         <img
           src="/icons/icon-publication.svg"
           alt=""
-          class="w-8 h-8"
+          class="w-9 h-9"
           style="filter: invert(47%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(85%) contrast(75%);"
         />
       {/if}
@@ -85,12 +85,12 @@
       aria-label="My Profile"
     >
       {#if isSettingsPage}
-        <div class="w-8 h-8" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-profile-fill.svg'); mask-image: url('/icons/icon-profile-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
+        <div class="w-9 h-9" style="background-color: #{$teamColors.primary}; -webkit-mask-image: url('/icons/icon-profile-fill.svg'); mask-image: url('/icons/icon-profile-fill.svg'); -webkit-mask-size: contain; mask-size: contain;"></div>
       {:else}
         <img
           src="/icons/icon-profile.svg"
           alt=""
-          class="w-8 h-8"
+          class="w-9 h-9"
           style="filter: invert(37%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(85%) contrast(75%);"
         />
       {/if}

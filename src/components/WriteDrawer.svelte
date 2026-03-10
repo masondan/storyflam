@@ -864,7 +864,7 @@
          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
          <div
            bind:this={editorContainer}
-           class="editor-content relative text-base text-[#333333] leading-relaxed -mt-2"
+           class="editor-content relative text-[1.0625rem] text-[#333333] leading-relaxed -mt-2"
            on:click={(e) => {
              handleMediaClick(e)
              if (quillInstance) quillInstance.focus()
@@ -1175,7 +1175,7 @@
 
   .editor-content :global(.ql-editor) {
     padding: 0;
-    font-size: 1rem;
+    font-size: 1.0625rem;
     line-height: 1.625;
     color: #333333;
     min-height: 100%;
