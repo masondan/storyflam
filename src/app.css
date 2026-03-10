@@ -1,3 +1,9 @@
+/* Quill Snow theme (toolbar hidden, used as editing engine only) */
+@import 'quill/dist/quill.snow.css';
+
+/* Plyr video player */
+@import 'plyr/dist/plyr.css';
+
 /* Self-hosted Inter variable font */
 @font-face {
   font-family: 'Inter';
@@ -5,12 +11,6 @@
   font-weight: 100 900;
   font-optical-sizing: auto;
 }
-
-/* Quill Snow theme (toolbar hidden, used as editing engine only) */
-@import 'quill/dist/quill.snow.css';
-
-/* Plyr video player */
-@import 'plyr/dist/plyr.css';
 
 @tailwind base;
 @tailwind components;

@@ -33,7 +33,9 @@ export async function initPlyrInContainer(container: HTMLElement): Promise<() =>
 
 		try {
 			const player = new Plyr(video, {
-				controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
+				controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+				iconUrl: '/plyr.svg',
+				loadSprite: true
 			})
 			instances.push(player)
 			
