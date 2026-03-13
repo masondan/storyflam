@@ -103,8 +103,15 @@
     // Clean up any existing Plyr instances
     if (cleanupPlyr) { cleanupPlyr(); cleanupPlyr = null }
     
-    // Initialize Quill after DOM update
+    // Resize title textarea to fit loaded content
     await tick()
+    const titleEl = document.querySelector('.title-input') as HTMLTextAreaElement
+    if (titleEl) {
+      titleEl.style.height = 'auto'
+      titleEl.style.height = titleEl.scrollHeight + 'px'
+    }
+    
+    // Initialize Quill after DOM update
     await initQuill()
     
     // Load content into Quill
