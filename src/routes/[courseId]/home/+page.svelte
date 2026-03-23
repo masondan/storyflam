@@ -260,29 +260,32 @@
   <!-- Header with Tabs -->
   <div class="px-4 pt-4 pb-6">
     <div class="flex items-center justify-between">
-      <div class="flex gap-6">
-        <button
-          on:click={() => { activeTab = 'drafts'; selectMode = false; selectedIds = new Set() }}
-          class="text-xl transition-colors pb-1 border-b-2"
-          class:font-bold={activeTab === 'drafts'}
-          class:font-medium={activeTab !== 'drafts'}
-          class:text-[#777777]={activeTab !== 'drafts'}
-          class:border-transparent={activeTab !== 'drafts'}
-          style={activeTab === 'drafts' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
-        >
-          Drafts
-        </button>
-        <button
-          on:click={() => { activeTab = 'published'; selectMode = false; selectedIds = new Set() }}
-          class="text-xl transition-colors pb-1 border-b-2"
-          class:font-bold={activeTab === 'published'}
-          class:font-medium={activeTab !== 'published'}
-          class:text-[#777777]={activeTab !== 'published'}
-          class:border-transparent={activeTab !== 'published'}
-          style={activeTab === 'published' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
-        >
-          Published
-        </button>
+      <div class="flex items-center gap-4">
+        <flam-nav current="storyflam"></flam-nav>
+        <div class="flex gap-6">
+          <button
+            on:click={() => { activeTab = 'drafts'; selectMode = false; selectedIds = new Set() }}
+            class="text-xl transition-colors pb-1 border-b-2"
+            class:font-bold={activeTab === 'drafts'}
+            class:font-medium={activeTab !== 'drafts'}
+            class:text-[#777777]={activeTab !== 'drafts'}
+            class:border-transparent={activeTab !== 'drafts'}
+            style={activeTab === 'drafts' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
+          >
+            Drafts
+          </button>
+          <button
+            on:click={() => { activeTab = 'published'; selectMode = false; selectedIds = new Set() }}
+            class="text-xl transition-colors pb-1 border-b-2"
+            class:font-bold={activeTab === 'published'}
+            class:font-medium={activeTab !== 'published'}
+            class:text-[#777777]={activeTab !== 'published'}
+            class:border-transparent={activeTab !== 'published'}
+            style={activeTab === 'published' ? `color: #${$teamColors.primary}; border-bottom-color: #${$teamColors.primary};` : ''}
+          >
+            Published
+          </button>
+        </div>
       </div>
 
       <!-- Select All & Delete Controls -->
