@@ -18,6 +18,11 @@ class FlamNav extends HTMLElement {
 		return this.getAttribute('current') || '';
 	}
 
+	set current(value) {
+		// Setter prevents "Cannot set property current" error
+		// No-op: attribute is set statically in HTML, no dynamic updates needed
+	}
+
 	connectedCallback() {
 		this.render();
 		this._onKeyDown = (e) => { if (e.key === 'Escape') this.close(); };
@@ -31,10 +36,25 @@ class FlamNav extends HTMLElement {
 		this._open ? this.close() : this.open();
 	}
 
+	_getAppContainer() {
+		// Find the app container (e.g., max-w-[480px] centered div)
+		return this.closest('.app-container, .app, .page, [class*="max-w"]') ||
+		       this.closest('[style*="max-width"]');
+	}
+
 	open() {
 		this._open = true;
 		const drawer = this.shadowRoot.querySelector('.drawer');
 		const overlay = this.shadowRoot.querySelector('.overlay');
+		const container = this._getAppContainer();
+
+		// Position drawer to align with app container's left edge
+		if (container) {
+			const rect = container.getBoundingClientRect();
+			drawer.style.left = rect.left + 'px';
+			overlay.style.left = rect.left + 'px';
+			overlay.style.width = rect.width + 'px';
+		}
 
 		drawer.classList.add('open');
 		overlay.classList.add('open');
