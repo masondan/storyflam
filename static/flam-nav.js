@@ -35,6 +35,7 @@ class FlamNav extends HTMLElement {
 		this._open = true;
 		const drawer = this.shadowRoot.querySelector('.drawer');
 		const overlay = this.shadowRoot.querySelector('.overlay');
+
 		drawer.classList.add('open');
 		overlay.classList.add('open');
 		document.addEventListener('keydown', this._onKeyDown);
@@ -56,14 +57,20 @@ class FlamNav extends HTMLElement {
 			{ id: 'audioflam', name: 'AudioFlam', url: 'https://audioflam.flamtools.com' },
 			{ id: 'chartflam', name: 'ChartFlam', url: 'https://chartflam.flamtools.com' },
 			{ id: 'mapflam', name: 'MapFlam', url: 'https://mapflam.flamtools.com' },
-			{ id: 'storyflam', name: 'StoryFlam', url: 'https://storyflam.flamtools.com' },
-			{ id: 'flamit', name: 'FlamIt', url: 'https://flamit.flamtools.com' }
+			{ id: 'storyflam', name: 'StoryFlam', url: 'https://storyflam.flamtools.com', training: true },
+			{ id: 'flamit', name: 'FlamIt', url: 'https://flamit.flamtools.com', training: true }
 		];
 
 		const current = this.current;
 
 		this.shadowRoot.innerHTML = `
 			<style>
+				@font-face {
+					font-family: 'Saira';
+					src: url('/fonts/saira.ttf') format('truetype');
+					font-weight: 100 900;
+				}
+
 				:host {
 					display: flex;
 					align-items: center;
@@ -77,7 +84,7 @@ class FlamNav extends HTMLElement {
 					background: transparent;
 					cursor: pointer;
 					padding: 0;
-					color: #555;
+					color: inherit;
 					transition: color 150ms ease;
 				}
 
@@ -110,18 +117,20 @@ class FlamNav extends HTMLElement {
 					top: 0;
 					left: 0;
 					bottom: 0;
-					width: 220px;
+					width: 180px;
 					background: #fff;
 					z-index: 9999;
-					transform: translateX(-100%);
-					transition: transform 250ms ease;
+					opacity: 0;
+					visibility: hidden;
+					transition: opacity 250ms ease, visibility 250ms ease;
 					display: flex;
 					flex-direction: column;
 					box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
 				}
 
 				.drawer.open {
-					transform: translateX(0);
+					opacity: 1;
+					visibility: visible;
 				}
 
 				.drawer-header {
@@ -135,9 +144,9 @@ class FlamNav extends HTMLElement {
 					gap: 8px;
 					text-decoration: none;
 					color: #5422b0;
-					font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+					font-family: 'Saira', -apple-system, BlinkMacSystemFont, sans-serif;
 					font-size: 15px;
-					font-weight: 600;
+					font-weight: 750;
 				}
 
 				.drawer-header img {
@@ -157,9 +166,9 @@ class FlamNav extends HTMLElement {
 					display: block;
 					padding: 10px 16px;
 					text-decoration: none;
-					font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-					font-size: 14px;
-					font-weight: 450;
+					font-family: 'Saira', -apple-system, BlinkMacSystemFont, sans-serif;
+					font-size: 15px;
+					font-weight: 550;
 					color: #333;
 					transition: background-color 150ms ease;
 				}
@@ -170,8 +179,16 @@ class FlamNav extends HTMLElement {
 
 				.drawer-list li a.current {
 					color: #5422b0;
-					font-weight: 600;
+					font-weight: 750;
 					background-color: #f0e6f7;
+				}
+
+				.drawer-list li a.training {
+					color: #777;
+				}
+
+				.drawer-list li a.training.current {
+					color: #5422b0;
 				}
 
 				.drawer-list li.separator {
@@ -201,8 +218,9 @@ class FlamNav extends HTMLElement {
 				<ul class="drawer-list">
 					${apps.map((app, i) => {
 						const isCurrent = app.id === current;
-						const separator = i === 4 ? '<li class="separator"></li>' : '';
-						return `${separator}<li><a href="${app.url}"${isCurrent ? ' class="current"' : ''}>${app.name}</a></li>`;
+						const classes = [isCurrent ? 'current' : '', app.training ? 'training' : ''].filter(Boolean).join(' ');
+						const separator = i === 5 ? '<li class="separator"></li>' : '';
+						return `${separator}<li><a href="${app.url}"${classes ? ` class="${classes}"` : ''}>${app.name}</a></li>`;
 					}).join('')}
 				</ul>
 			</div>
