@@ -4,7 +4,7 @@
   "description": "Create, post and share mobile-first stories.",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "browser",
   "orientation": "portrait-primary",
   "background_color": "#5422b0",
   "theme_color": "#5422b0",
