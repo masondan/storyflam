@@ -1,0 +1,21 @@
+name = "storyflam-keep-alive"
+main = "src/worker.ts"
+compatibility_date = "2024-12-16"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+routes = [
+  { pattern = "keep-alive.storyflam.pages.dev/*", zone_name = "storyflam.pages.dev" }
+]
+
+[triggers]
+crons = ["0 0 */5 * *"]
+
+[env.production.vars]
+SUPABASE_URL = "https://adztfppazdmhpiahtfmh.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = ""
+
+[[env.production.kv_namespaces]]
+binding = "KEEP_ALIVE_KV"
+id = "6c6e87e2151349a9b7a81786c2459f9c"
+preview_id = "6c6e87e2151349a9b7a81786c2459f9c"
