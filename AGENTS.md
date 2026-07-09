@@ -3,7 +3,7 @@
 **Purpose:** Complete technical reference for AI agents implementing StoryFlam.  
 **Audience:** Code leads, developers, AI agents  
 **Status:** Deployed & actively refined  
-**Last Updated:** February 2026
+**Last Updated:** July 2026
 
 ---
 
@@ -25,31 +25,31 @@
 
 **2. Write & Publish Story**
 - Click "Write" → `WriteDrawer.svelte` opens (bottom-up slide)
-- Journalist must join a team first (or story stays in drafts)
+- Journalist must join a publication first (or story stays in drafts)
 - Save as draft: Updates `stories` table with `status='draft'`
-- Publish: Updates `status='published'`, adds to team stream
+- Publish: Updates `status='published'`, adds to publication stream
 - Key functions: `createStory()`, `updateStory()` in `src/lib/stories.ts`
 
-**3. Team Stream (Published Stories)**
-- Fetch all published stories for a team, ordered by: `is_pinned DESC`, `pin_timestamp DESC`, `created_at DESC`
+**3. Publication Stream (Published Stories)**
+- Fetch all published stories for a publication, ordered by: `is_pinned DESC`, `pin_timestamp DESC`, `created_at DESC`
 - Editors can edit/delete/pin stories in stream
 - Non-editors can only view
-- Key functions: `getTeamStream()` in `src/lib/stories.ts`
+- Key functions: `getPublicationStream()` in `src/lib/stories.ts`
 
 **4. Settings & Permissions**
 - Settings page (`src/routes/[courseId]/settings/+page.svelte`)
-- Journalists: Change team, edit own published stories
-- Editors: Change team settings (colors, logo, name), manage team members
-- Trainers: Access Teams & Admin tabs, edit all stories, manage course
-- Guest Editors: Access Teams tab, edit all stories (same as trainer for stories)
+- Journalists: Change publication, edit own published stories
+- Editors: Change publication settings (colors, logo, name), manage publication members
+- Trainers: Access Publications & Admin tabs, edit all stories, manage course
+- Guest Editors: Access Publications tab, edit all stories (same as trainer for stories)
 
 ### Key Permission Boundaries
 
-| User Type | Can Edit | Can Delete | Can Pin | Can Manage Teams |
-|-----------|----------|-----------|--------|-----------------|
+| User Type | Can Edit | Can Delete | Can Pin | Can Manage Publications |
+|-----------|----------|-----------|--------|------------------------|
 | Journalist (non-editor) | Own stories only | Own drafts only | ❌ | ❌ |
-| Journalist (editor) | All team stories | All team stories | ✅ | ✅ (own team) |
-| Trainer | All stories | All stories | ✅ | ✅ (all teams) |
+| Journalist (editor) | All publication stories | All publication stories | ✅ | ✅ (own publication) |
+| Trainer | All stories | All stories | ✅ | ✅ (all publications) |
 | Guest Editor | All stories | All stories | ✅ | ✅ (view only) |
 
 **Enforcement:** Permission checks happen in component logic and story functions. No server-side API layer currently.
@@ -69,9 +69,9 @@
 | Home (drafts/published) | `src/routes/[courseId]/home/+page.svelte` |
 | Publication stream | `src/routes/[courseId]/stream/+page.svelte` |
 | Settings | `src/routes/[courseId]/settings/+page.svelte` |
-| Public share | `src/routes/share/[teamName]/+page.svelte` (note: route param should be `[publicationName]`) |
+| Public share | `src/routes/share/[publicationName]/+page.svelte` |
 | Main editor | `src/components/WriteDrawer.svelte` (Quill-based, ~1300 lines) |
-| Publication view | `src/components/TeamStreamDrawer.svelte` (note: should be `PublicationStreamDrawer.svelte`) |
+| Publication view | `src/components/PublicationStreamDrawer.svelte` |
 
 ### Tech Stack
 - **Frontend:** SvelteKit 2.0, Tailwind CSS
@@ -86,7 +86,7 @@
 
 **Pattern 1: Fetch & Display List**
 ```typescript
-const { data: stories, error } = await getTeamStream(courseId, teamName)
+const { data: stories, error } = await getPublicationStream(courseId, publicationName)
 if (error) showNotification('error', 'Failed to load')
 // Display stories with StoryCard component
 ```
@@ -192,8 +192,8 @@ CREATE TABLE journalists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id TEXT NOT NULL,
   name TEXT NOT NULL,                                -- Personal name, max 30 characters
-  team_name TEXT,                                   -- NULL if not in a team yet
-  is_editor BOOLEAN DEFAULT FALSE,                  -- Can edit team settings + all stories in team stream
+  publication_name TEXT,                            -- NULL if not in a publication yet
+  is_editor BOOLEAN DEFAULT FALSE,                  -- Can edit publication settings + all stories in publication stream
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(course_id, name),
@@ -201,11 +201,11 @@ CREATE TABLE journalists (
 );
 
 CREATE UNIQUE INDEX idx_journalists_course_name ON journalists(course_id, name);
-CREATE INDEX idx_journalists_course_team ON journalists(course_id, team_name);
+CREATE INDEX idx_journalists_course_publication ON journalists(course_id, publication_name);
 CREATE INDEX idx_journalists_course ON journalists(course_id);
 ```
 
-**Constraints:** `name` (max 30, unique per course), `team_name` (can be NULL), `is_editor` (boolean flag)
+**Constraints:** `name` (max 30, unique per course), `publication_name` (can be NULL), `is_editor` (boolean flag)
 
 ### publications
 ```sql
@@ -230,7 +230,7 @@ CREATE INDEX idx_publications_course ON publications(course_id);
 CREATE UNIQUE INDEX idx_publications_share_token ON publications(public_share_token) WHERE public_share_token IS NOT NULL;
 ```
 
-**Color Palettes (7 options - select one per team):**
+**Color Palettes (7 options - select one per publication):**
 ```javascript
 export const COLOR_PALETTES = [
   { name: 'Indigo Bloom', primary: '5422b0', secondary: 'f0e6f7' },      // Default
@@ -329,7 +329,7 @@ CREATE INDEX idx_activity_created ON activity_log(created_at DESC);
 
 **Permission Enforcement:**
 - **Client-side:** Components check `$isTrainer`, `$isEditor`, `$isJournalist` from stores
-- **Data-side:** Story functions (getDrafts, getTeamStream, etc.) filter by `author_name` or `team_name`
+- **Data-side:** Story functions (getDrafts, getPublicationStream, etc.) filter by `author_name` or `publication_name`
 - **UI-side:** Buttons/menus conditionally render based on role
 
 ---
@@ -338,12 +338,12 @@ CREATE INDEX idx_activity_created ON activity_log(created_at DESC);
 
 ### Session Storage
 ```javascript
-// localStorage key: 'newslab_session'
+// localStorage key: 'storyflam_session'
 {
   courseId: "nigeria-0126",
   name: "Zainab",
   role: "journalist|trainer|guest_editor",
-  teamName: "Team Lagos" || null,
+  publicationName: "Team Lagos" || null,
   sessionToken: "uuid",
   loginTimestamp: 1703001600000
 }
@@ -403,12 +403,12 @@ validateSession(session) → boolean (checks if journalist record still exists)
 ```typescript
 createStory(input: {
   courseId: string
-  teamName: string
+  publicationName: string
   authorName: string
   title: string
   summary?: string
   featuredImageUrl?: string
-  content?: { blocks: ContentBlock[] }
+  content?: { blocks: ContentBlock[] } | { html: string }
   status?: 'draft' | 'published'
 })
 ```
@@ -419,9 +419,9 @@ updateStory(id: string, updates: {
   title?: string
   summary?: string
   featuredImageUrl?: string
-  content?: { blocks: ContentBlock[] }
+  content?: { blocks: ContentBlock[] } | { html: string }
   status?: 'draft' | 'published'
-  teamName?: string
+  publicationName?: string
   is_pinned?: boolean
 })
 ```
@@ -429,25 +429,28 @@ updateStory(id: string, updates: {
 ### Fetch Queries
 - `getDrafts(courseId, authorName)` → All drafts for journalist
 - `getPublished(courseId, authorName)` → All published for journalist
-- `getTeamStream(courseId, teamName)` → Published stories, ordered by pin status + timestamp + creation
+- `getPublicationStream(courseId, publicationName)` → Published stories, ordered by pin status + timestamp + creation
 - `getStory(id)` → Single story by ID
-- `getPublicTeamStream(teamName)` → Public share endpoint (no auth, only if `share_enabled = true`)
+- `getPublicationInfo(courseId, publicationName)` → Publication metadata (colors, logo, name)
+- `getFallbackImageUrl(courseId)` → Default fallback image for stories without featured images
+- `pinStory(storyId)` → Pin story to publication stream
+- `unpinStory(storyId)` → Unpin story from publication stream
 
 ### Pinning Stories
 ```typescript
-// Max 3 pinned stories per team (enforced in app)
+// Max 3 pinned stories per publication (enforced in app)
 // Order: pin_index (0=newest) or pin_timestamp DESC
 updateStory(id, { is_pinned: true, pin_timestamp: NOW(), pin_index: 0 })
 
 // When unpinning, reorder remaining pinned stories
 ```
 
-### Team Join/Leave
-**Join:** Update `journalists.team_name = 'Team Name'`
-**Leave:** 
+### Publication Join/Leave
+**Join:** Update `journalists.publication_name = 'Publication Name'`
+**Leave:**
 - Revert all published stories back to drafts (prevent orphaning)
-- Set `journalists.team_name = null`
-- Delete team if no members remain
+- Set `journalists.publication_name = null`
+- Delete publication if no members remain
 - Log activity
 
 ---
@@ -576,15 +579,15 @@ import { logActivity } from '$lib/activity'
 // After publishing story
 await logActivity(
   courseId,
-  teamName,
+  publicationName,
   'published',
   journalistName,
   storyId,
   storyTitle
 )
 
-// Other actions: 'published', 'unpublished', 'edited', 'pinned', 'unpinned', 'deleted', 
-// 'joined_team', 'left_team', 'promoted_editor', 'demoted_editor'
+// Other actions: 'published', 'unpublished', 'edited', 'pinned', 'unpinned', 'deleted',
+// 'joined_publication', 'left_publication', 'promoted_editor', 'demoted_editor'
 ```
 
 ### Fetching Activity Log
@@ -598,7 +601,7 @@ const { data: entries, error } = await getActivityLog(courseId, limit = 100)
 interface ActivityLogEntry {
   id: string
   course_id: string
-  team_name: string | null
+  publication_name: string | null
   journalist_name: string | null
   action: ActivityAction
   story_id: string | null
@@ -625,21 +628,21 @@ supabase
   .from('stories')
   .on('*', (payload) => {
     if (payload.new.course_id === courseId &&
-        payload.new.team_name === teamName) {
+        payload.new.publication_name === publicationName) {
       // Update story in local state
     }
   })
   .subscribe()
 ```
 
-### Pattern: Subscribe to Team Members
+### Pattern: Subscribe to Publication Members
 ```typescript
 supabase
   .from('journalists')
   .on('*', (payload) => {
     if (payload.new.course_id === courseId &&
-        payload.new.team_name === teamName) {
-      // Refresh team members list
+        payload.new.publication_name === publicationName) {
+      // Refresh publication members list
     }
   })
   .subscribe()
@@ -762,6 +765,7 @@ const content = quillInstance.root.innerHTML
 | separator | `<hr>` | none |
 | image | `<figure><img />` | url, caption, width, height |
 | youtube | `<iframe>` embed | url, title |
+| vimeo | `<iframe>` embed | url, title |
 | video | `<video>` player | url (Cloudinary), title |
 | link | `<a>` with color | url, text, color (publication primary) |
 
@@ -803,15 +807,16 @@ export const currentViewingStory
 ```typescript
 export const editingStory
 // Methods: .set(story), .loadStory(partial), .markDirty(), .markSaved(), .reset()
-// Tracks: id, title, summary, featuredImageUrl, featuredImageCaption, content, teamName, status, isDirty, lastSaved
+// Tracks: id, title, summary, featuredImageUrl, featuredImageCaption, content, contentHtml, publicationName, status, isDirty, lastSaved
 // featured_image_caption stores caption text for the featured image
+// contentHtml stores Quill HTML format; content stores legacy blocks format
 ```
 
-**Team Colors:**
+**Publication Colors:**
 ```typescript
 export const teamColors
 // { primary: string, secondary: string }
-// Updates when user changes team or team theme
+// Updates when user changes publication or publication theme
 ```
 
 **Notification:**
@@ -827,9 +832,9 @@ showNotification(type: 'success' | 'error' | 'info', message: string, duration =
 ### Pages (SvelteKit Routes)
 - `src/routes/+page.svelte` — Splash/login
 - `src/routes/[courseId]/home/+page.svelte` — Home (drafts/published tabs)
-- `src/routes/[courseId]/stream/+page.svelte` — Team stream
+- `src/routes/[courseId]/stream/+page.svelte` — Publication stream
 - `src/routes/[courseId]/settings/+page.svelte` — Settings
-- `src/routes/share/[teamName]/+page.svelte` — Public share
+- `src/routes/share/[publicationName]/+page.svelte` — Public share
 
 ### Layout Components
 - `FooterNav.svelte` — 4-button footer (home, write, stream, settings)
@@ -841,13 +846,11 @@ showNotification(type: 'success' | 'error' | 'info', message: string, duration =
 - `StoryReaderDrawer.svelte` — Story viewer (bottom-up)
 
 ### Forms & Inputs
-- `HeadlineInput.svelte` — Title with character count
-- `SummaryInput.svelte` — Summary textarea
-- `ImageUploader.svelte` — Featured image upload
-- `RichTextEditor.svelte` — Content editor blocks
-- `TeamNameInput.svelte` — Team name with validation
 - `ColorPalette.svelte` — 7-color selector
-- `TeamLogoUpload.svelte` — Logo upload (Cloudinary)
+- `PublicationLogoUpload.svelte` — Logo upload (Cloudinary)
+- `ConfirmationToolbar.svelte` — Confirmation actions (save/cancel)
+- `LinkModal.svelte` — Link insertion modal
+- `YouTubeModal.svelte` — YouTube video insertion modal
 
 ### Cards & Lists
 - `StoryCard.svelte` — Thumbnail + metadata
@@ -856,8 +859,14 @@ showNotification(type: 'success' | 'error' | 'info', message: string, duration =
 - `ActivityLogRow.svelte` — Single activity entry
 
 ### Settings Tabs
-- `TeamsTab.svelte` — View all teams (trainer/guest editor only)
+- `PublicationsTab.svelte` — View all publications (trainer/guest editor only)
 - `AdminTab.svelte` — Course controls (trainer only)
+- `CombinedAdminTab.svelte` — Combined admin interface
+
+### Publication Management
+- `PublicationExpandable.svelte` — Expandable publication card with members
+- `PublicationLockToggle.svelte` — Toggle publication settings lock
+- `FallbackPublicationLogo.svelte` — Fallback logo display
 
 ### Component Communication
 - **Props:** Typed data passing
@@ -889,12 +898,12 @@ showNotification(type: 'success' | 'error' | 'info', message: string, duration =
 - `previewDrawerOpen` — Used by: PreviewDrawer, WriteDrawer
 
 **Story & Editing Stores:**
-- `currentViewingStory` — Used by: StoryReaderDrawer, TeamStreamDrawer
+- `currentViewingStory` — Used by: StoryReaderDrawer, PublicationStreamDrawer
 - `editingStory` — Used by: WriteDrawer, Home page
 - `teamColors` — Used by: Notification, FooterNav, PreviewDrawer, LinkModal, ThreeDotsMenu, StoryCard, (set by Layout on init)
 
 **Notification:**
-- `showNotification()` — Called by: TeamExpandable, ShareToggle, AdminTab, and most story/team operations
+- `showNotification()` — Called by: PublicationExpandable, ShareToggle, AdminTab, and most story/publication operations
 
 **Colors:**
 - `COLOR_PALETTES` — Used by: ColorPalette component
@@ -910,28 +919,29 @@ Layout (+layout.svelte)
 │   │   │   ├── PreviewDrawer.svelte (subscribes: previewDrawerOpen, teamColors)
 │   │   │   ├── LockWarning.svelte
 │   │   │   ├── YouTubeModal.svelte
-│   │   │   └── LinkModal.svelte (subscribes: teamColors)
+│   │   │   ├── LinkModal.svelte (subscribes: teamColors)
+│   │   │   └── ConfirmationToolbar.svelte
 │   │   └── StoryReaderDrawer.svelte
-│   │       └── TeamStreamDrawer.svelte (subscribes: currentViewingStory)
+│   │       └── PublicationStreamDrawer.svelte (subscribes: currentViewingStory)
 │   │
 │   ├── Stream (/stream/+page.svelte)
 │   │   ├── StoryCard.svelte (subscribes: teamColors)
 │   │   │   └── ThreeDotsMenu.svelte (subscribes: teamColors)
 │   │   └── StoryReaderDrawer.svelte
-│   │       └── TeamStreamDrawer.svelte
+│   │       └── PublicationStreamDrawer.svelte
 │   │
 │   ├── Settings (/settings/+page.svelte)
-│   │   ├── TeamsTab.svelte
-│   │   │   ├── TeamExpandable.svelte
+│   │   ├── PublicationsTab.svelte
+│   │   │   ├── PublicationExpandable.svelte
 │   │   │   │   └── TeamMemberItem.svelte
 │   │   │   ├── ColorPalette.svelte
-│   │   │   ├── TeamLogoUpload.svelte
-│   │   │   └── TeamLockToggle.svelte
-│   │   └── AdminTab.svelte (subscribes: session)
+│   │   │   ├── PublicationLogoUpload.svelte
+│   │   │   └── PublicationLockToggle.svelte
+│   │   └── CombinedAdminTab.svelte (subscribes: session)
 │   │       ├── ActivityLogRow.svelte
 │   │       └── ShareToggle.svelte
 │   │
-│   └── Public Share (/share/[teamName]/+page.svelte)
+│   └── Public Share (/share/[publicationName]/+page.svelte)
 │       └── StoryCard.svelte
 │
 ```
@@ -941,7 +951,7 @@ Layout (+layout.svelte)
 2. **Open WriteDrawer:** `writeDrawerOpen = true` → WriteDrawer mounts → Attempts lock → Shows LockWarning if locked
 3. **Save Story:** `editingStory.markSaved()` → WriteDrawer shows success
 4. **Publish Story:** `logActivity()` → Admin tab sees new entry (realtime)
-5. **Change Team:** `session.teamName` updated → `teamColors` updates → UI re-renders with new colors
+5. **Change Publication:** `session.publicationName` updated → `teamColors` updates → UI re-renders with new colors
 
 ---
 
@@ -1064,10 +1074,10 @@ Current implementation: Async import ensures jsPDF is loaded only on-demand, kee
 - Cumulative Layout Shift: < 0.1
 
 ### Images
-- Featured images: Max 800px width, lossy compression (q_80)
-- Team logos: 1:1 aspect ratio, max 200KB
+- Featured images: Max 800px width, lossy compression (q_auto)
+- Publication logos: 1:1 aspect ratio, max 200KB
 - Thumbnails: 300px max, lossy compression
-- Cloudinary transformations: `w_800,q_80,f_auto`
+- Cloudinary transformations: `w_800,q_auto,f_auto`
 
 ### Bundle Size
 - Initial bundle: < 200KB gzipped
@@ -1163,20 +1173,19 @@ getThumbnailUrl(url: string, size: number = 300): string
 ### Data Integrity
 - **No atomic transactions:** Publishing a story and logging activity are two separate database calls. If the second fails, the log is missing. **Mitigation:** Use Supabase transaction functions or move activity logging to a database trigger.
 - **Lock timeout is client-side:** Locks depend on client checking `locked_at` timestamp. A client could hold a lock indefinitely if it crashes before releasing. **Mitigation:** Implement server-side lock cleanup job (e.g., clear locks older than 10 minutes every 5 minutes).
-- **Team deletion logic incomplete:** No database cascade for team deletion; stories orphaned when team deleted. **Mitigation:** Use database triggers or enforce cascade on delete at the application level.
+- **Publication deletion logic incomplete:** No database cascade for publication deletion; stories orphaned when publication deleted. **Mitigation:** Use database triggers or enforce cascade on delete at the application level.
 
 ### Performance & Scalability
-- **No pagination:** `getTeamStream()` fetches all published stories at once. Large teams (1000+ stories) will cause performance issues. **Mitigation:** Implement cursor-based pagination (fetch 10-20 stories per page).
+- **No pagination:** `getPublicationStream()` fetches all published stories at once. Large publications (1000+ stories) will cause performance issues. **Mitigation:** Implement cursor-based pagination (fetch 10-20 stories per page).
 - **Realtime subscriptions always-on:** Subscriptions are created but rarely cleaned up. Long-lived pages (e.g., stream) accumulate multiple subscriptions. **Mitigation:** Explicit unsubscribe on component destroy; consider debouncing subscription updates.
 - **No caching:** Every page load refetches all data from Supabase. No local caching layer. **Mitigation:** Implement SvelteKit data loading (`+page.server.ts`) or client-side cache store.
 
 ### Features Not Yet Implemented
 - **Bulk export:** Admin tab could allow exporting all stories in a course as ZIP or CSV. Currently only individual story export available.
-- **Rich text formatting UI:** Editor supports bold/heading/lists in JSON, but the UI is basic (no WYSIWYG editor). Content must be manually composed as blocks.
 - **Search:** No full-text search across stories. Users must scroll through entire stream.
 - **Comments/Feedback:** No commenting system on published stories; no way for readers to provide feedback to authors.
 - **Draft auto-save:** No auto-save interval; users must manually click save. **Mitigation:** Implement auto-save every 30 seconds during editing.
-- **Story versions/history:** No revision tracking; editing a story overwrites previous version. **Mitigation:** Add `story_versions` table to track edits.
+- **Story versions/history:** No revision tracking
 
 ### Code Quality
 - **Large components:** `WriteDrawer.svelte` is 1336 lines; difficult to maintain and test. **Mitigation:** Break into smaller sub-components (Editor, ToolBar, Modal, etc.).
